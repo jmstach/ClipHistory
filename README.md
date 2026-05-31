@@ -45,7 +45,7 @@ Download the latest `.dmg` from the [Releases](../../releases) page, open it, an
 ### Build from source
 
 ```bash
-git clone https://github.com/yourusername/ClipHistory.git
+git clone https://github.com/weiykong/ClipHistory.git
 cd ClipHistory
 bash scripts/build-dmg.sh
 # → dist/ClipHistory.dmg
