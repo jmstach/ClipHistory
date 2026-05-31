@@ -28,15 +28,15 @@ One hotkey. Instant popup. Text and images. No subscription.
 
 ## Why ClipHistory?
 
-| | ClipHistory | Maccy | Paste | Raycast |
-|---|:---:|:---:|:---:|:---:|
-| Free | ✅ | ✅ | ❌ $3.99/mo | ✅ |
-| Images | ✅ | ❌ | ✅ | ✅ |
-| Native Swift (no Electron) | ✅ | ✅ | ✅ | ❌ |
-| Pin items | ✅ | ❌ | ✅ | ❌ |
-| Per-app exclusions | ✅ | ✅ | ❌ | ❌ |
-| Open source | ✅ | ✅ | ❌ | ❌ |
-| App size | ~1 MB | ~5 MB | ~30 MB | ~90 MB |
+If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If you just want a fast, native, free clipboard history that handles text and images — this is it.
+
+| | |
+|---|---|
+| ✅ Free & open source | ✅ Text & images |
+| ✅ Native Swift — ~1 MB | ✅ Pin favourites |
+| ✅ Search as you type | ✅ Per-app privacy exclusions |
+| ✅ Source app icons | ✅ Survives restarts |
+| ✅ Launch at Login | ✅ No subscription, no telemetry |
 
 ---
 
