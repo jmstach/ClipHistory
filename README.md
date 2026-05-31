@@ -2,6 +2,7 @@
 
 A lightweight, native macOS clipboard manager. Lives in your menu bar, pops up instantly with a hotkey, and lets you paste anything you copied — text or images.
 
+![CI](https://github.com/weiykong/ClipHistory/actions/workflows/ci.yml/badge.svg)
 ![macOS](https://img.shields.io/badge/macOS-14%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
