@@ -20,9 +20,9 @@ One hotkey. Instant popup. Text and images. No subscription.
 
 ## What it looks like
 
-> *Add a screenshot or GIF here — drag an image into this edit field on GitHub*
->
-> ![ClipHistory popup](docs/screenshot.png)
+<div align="center">
+  <img src="docs/screenshot-context.png" width="700" alt="ClipHistory popup in front of a text editor" />
+</div>
 
 ---
 
