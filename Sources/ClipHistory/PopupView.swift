@@ -24,12 +24,29 @@ struct PopupView: View {
     @State private var searchFocused = false
     /// Drives the blink animation — toggled by `onChange(of: searchFocused)`.
     @State private var cursorPhase   = false
+    /// Last recorded hover position. Hover activates after the mouse moves
+    /// at least 6 pts from its initial entry point, so mousing over the popup
+    /// while it opens doesn't immediately change the selection.
+    @State private var lastHoverPt: CGPoint? = nil
+    @State private var hoverEnabled         = false
 
     var body: some View {
         VStack(spacing: 0) {
             searchBar
             Divider().opacity(0.12)
             itemList
+                .onContinuousHover { phase in
+                    guard case .active(let pt) = phase else { return }
+                    if let last = lastHoverPt {
+                        // Enable hover once the mouse moves ≥ 6 pts in any direction.
+                        if !hoverEnabled {
+                            let dx = pt.x - last.x, dy = pt.y - last.y
+                            if dx*dx + dy*dy >= 36 { hoverEnabled = true }
+                        }
+                    } else {
+                        lastHoverPt = pt
+                    }
+                }
             hintsBar
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
@@ -40,11 +57,18 @@ struct PopupView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.28), radius: 28, y: 14)
         .onChange(of: state.searchText) { _, _ in state.selectedIndex = 0 }
-        // Reset focus every time the popup is freshly opened
+        // Reset state every time the popup is freshly opened
         .onChange(of: state.showToken) { _, _ in
             searchFocused = false
             cursorPhase   = false
+            resetHoverState()
         }
+        .onAppear { resetHoverState() }
+    }
+
+    private func resetHoverState() {
+        lastHoverPt  = nil
+        hoverEnabled = false
     }
 
     // MARK: - Search bar
@@ -139,7 +163,7 @@ struct PopupView: View {
                 .onChange(of: state.selectedIndex) { _, newIdx in
                     if let item = filtered[safe: newIdx] {
                         withAnimation(.easeInOut(duration: 0.12)) {
-                            proxy.scrollTo(item.id, anchor: .center)
+                            proxy.scrollTo(item.id)
                         }
                     }
                 }
@@ -201,7 +225,7 @@ struct PopupView: View {
             }
         }
         .buttonStyle(.plain)
-        .onHover { if $0 { state.selectedIndex = index } }
+        .onHover { if $0 && hoverEnabled { state.selectedIndex = index } }
     }
 
     // MARK: - Per-kind content
