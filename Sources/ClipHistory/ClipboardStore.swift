@@ -1,5 +1,7 @@
 import AppKit
+import CryptoKit
 import Observation
+import Security
 
 // MARK: - Source app
 
@@ -7,7 +9,6 @@ struct SourceApp: Codable, Equatable {
     let bundleID: String
     let name:     String
 
-    /// App icon, looked up once from NSWorkspace and cached in memory.
     var icon: NSImage? { SourceApp.cachedIcon(for: bundleID) }
 
     private static let cache = NSCache<NSString, NSImage>()
@@ -71,7 +72,6 @@ struct ClipItem: Identifiable, Equatable {
         self.pinned    = pinned
     }
 
-    /// One-line string used for display and search.
     var preview: String {
         switch content {
         case .text(let t): return t.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -79,7 +79,6 @@ struct ClipItem: Identifiable, Equatable {
         }
     }
 
-    /// Convenience accessor — nil for image items.
     var textContent: String? {
         if case .text(let t) = content { return t }
         return nil
@@ -91,7 +90,6 @@ struct ClipItem: Identifiable, Equatable {
     }
 }
 
-// Codable with v1 migration: old format stored `text: String` at the top level.
 extension ClipItem: Codable {
     private enum CK: String, CodingKey { case id, content, date, sourceApp, text, pinned }
 
@@ -106,12 +104,11 @@ extension ClipItem: Codable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CK.self)
-        id        = try  c.decode(UUID.self,    forKey: .id)
-        date      = try  c.decode(Date.self,    forKey: .date)
+        id        = try  c.decode(UUID.self,      forKey: .id)
+        date      = try  c.decode(Date.self,      forKey: .date)
         sourceApp = try? c.decode(SourceApp.self, forKey: .sourceApp)
-        pinned    = (try? c.decode(Bool.self,   forKey: .pinned)) ?? false
+        pinned    = (try? c.decode(Bool.self,     forKey: .pinned)) ?? false
 
-        // New format first; fall back to v1 plain `text` field.
         if let cont = try? c.decode(ClipContent.self, forKey: .content) {
             content = cont
         } else if let text = try? c.decode(String.self, forKey: .text) {
@@ -130,21 +127,43 @@ final class ClipboardStore {
     private(set) var items: [ClipItem] = []
     private var maxCount: Int
 
-    /// Set to true before writing to the pasteboard yourself so the monitor
-    /// skips the next change (prevents re-inserting what we just pasted).
     var suppressNextPoll = false
+
+    // Decoded-image cache — avoids re-inflating PNG bytes on every render pass.
+    // Keyed by item UUID so entries are automatically orphaned when items are evicted.
+    private let imageCache = NSCache<NSUUID, NSImage>()
 
     private let saveURL: URL = {
         let dir = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("ClipHistory", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("history.json")
+        return dir.appendingPathComponent("history.json.enc")
     }()
 
-    init(maxCount: Int = 15) {
-        self.maxCount = maxCount
+    // AES-GCM key stored in the Keychain — never written to disk in plaintext.
+    private let encryptionKey: SymmetricKey
+
+    // Pending save work item — cancelled and rescheduled on each write so
+    // rapid clipboard bursts collapse into a single disk write.
+    private var pendingSave: DispatchWorkItem?
+
+    init(maxCount: Int = 50) {
+        self.maxCount      = maxCount
+        self.encryptionKey = ClipboardStore.loadOrCreateKey()
+        imageCache.countLimit = maxCount * 2
         load()
+    }
+
+    // MARK: - Image cache
+
+    func cachedImage(for item: ClipItem) -> NSImage? {
+        let key = item.id as NSUUID
+        if let hit = imageCache.object(forKey: key) { return hit }
+        guard case .image(let data) = item.content,
+              let img = NSImage(data: data) else { return nil }
+        imageCache.setObject(img, forKey: key)
+        return img
     }
 
     // MARK: - Public API
@@ -154,11 +173,12 @@ final class ClipboardStore {
 
         let pb = NSPasteboard.general
 
+        // Skip items explicitly marked as sensitive by the source app
+        // (1Password, Keychain prompts, etc. set this type on the pasteboard).
+        let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+        if pb.types?.contains(concealedType) == true { return }
+
         // ── 1. File URLs from Finder ──────────────────────────────────────────
-        // MUST come before the NSImage path. When Finder copies a file,
-        // readObjects(NSImage) returns the Finder document icon, NOT the image
-        // contents. We intercept file URLs first and load the actual file with
-        // NSImage(contentsOf:) so we store real pixels, not an icon.
         let imageExts: Set<String> = ["jpg","jpeg","png","gif","tiff","tif",
                                       "webp","heic","bmp","avif"]
         if let urls = pb.readObjects(
@@ -171,14 +191,10 @@ final class ClipboardStore {
                     return
                 }
             }
-            // File URLs present but none are images → skip; don't store a path/
-            // filename string as though the user copied meaningful text.
             return
         }
 
         // ── 2. Direct image data ──────────────────────────────────────────────
-        // Only reached when the pasteboard has NO file URLs. Handles screenshots
-        // (TIFF from Cmd+Shift+4), "Copy Image" in browsers, Preview, etc.
         if let imgs = pb.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage],
            let img  = imgs.first(where: { $0.isValid }),
            let thumb = img.pngThumbnail() {
@@ -196,32 +212,24 @@ final class ClipboardStore {
 
     func clearAll() {
         items = []
-        save()
+        imageCache.removeAllObjects()
+        flushSave()
     }
 
     func updateMaxCount(_ n: Int) {
         maxCount = n
-        let pinned   = items.filter { $0.pinned }
-        var unpinned = items.filter { !$0.pinned }
-        if unpinned.count > n {
-            unpinned = Array(unpinned.prefix(n))
-            items = pinned + unpinned
-            save()
-        }
+        imageCache.countLimit = n * 2
+        trimToLimit()
+        scheduleSave()
     }
 
     func togglePin(id: UUID) {
         guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
         items[idx].pinned.toggle()
-        // Pinned items always sit above unpinned items in the list.
-        let pinned   = items.filter { $0.pinned }
-        let unpinned = items.filter { !$0.pinned }
-        items = pinned + unpinned
-        save()
+        reorder()
+        scheduleSave()
     }
 
-    /// Shared filter used by PopupView and PopupWindowController so their
-    /// item indices are always in sync.
     func filtered(query: String, showImages: Bool = true) -> [ClipItem] {
         var result = items
         if !showImages { result = result.filter { !$0.isImage } }
@@ -232,58 +240,121 @@ final class ClipboardStore {
         }
     }
 
-    // MARK: - Private
+    // MARK: - Private helpers
 
     private func add(_ item: ClipItem) {
         items.insert(item, at: 0)
-        // Pinned items are never evicted; only unpinned items respect maxCount.
-        let pinned   = items.filter { $0.pinned }
-        var unpinned = items.filter { !$0.pinned }
-        if unpinned.count > maxCount { unpinned = Array(unpinned.prefix(maxCount)) }
-        items = pinned + unpinned
-        save()
+        trimToLimit()
+        scheduleSave()
     }
 
-    private func save() {
-        guard let data = try? JSONEncoder().encode(items) else { return }
-        try? data.write(to: saveURL, options: .atomic)
+    private func trimToLimit() {
+        let pinned   = items.filter { $0.pinned }
+        let unpinned = items.filter { !$0.pinned }
+        // Both pinned and unpinned capped independently at maxCount
+        let trimmedPinned   = Array(pinned.prefix(maxCount))
+        let trimmedUnpinned = Array(unpinned.prefix(maxCount))
+        // Evict decoded images for removed items
+        let kept = Set((trimmedPinned + trimmedUnpinned).map { $0.id })
+        for item in items where !kept.contains(item.id) {
+            imageCache.removeObject(forKey: item.id as NSUUID)
+        }
+        items = trimmedPinned + trimmedUnpinned
     }
+
+    private func reorder() {
+        let pinned   = items.filter { $0.pinned }
+        let unpinned = items.filter { !$0.pinned }
+        items = pinned + unpinned
+    }
+
+    // MARK: - Debounced save
+
+    private func scheduleSave() {
+        pendingSave?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.flushSave() }
+        pendingSave = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
+    }
+
+    private func flushSave() {
+        pendingSave = nil
+        guard let plain = try? JSONEncoder().encode(items) else { return }
+        guard let sealed = try? AES.GCM.seal(plain, using: encryptionKey),
+              let combined = sealed.combined else { return }
+        try? combined.write(to: saveURL, options: .atomic)
+    }
+
+    // MARK: - Load (decrypts + falls back to legacy plaintext)
 
     private func load() {
-        guard let data  = try? Data(contentsOf: saveURL),
-              let saved = try? JSONDecoder().decode([ClipItem].self, from: data)
-        else { return }
-        items = Array(saved.prefix(maxCount))
+        if let enc = try? Data(contentsOf: saveURL),
+           let box = try? AES.GCM.SealedBox(combined: enc),
+           let plain = try? AES.GCM.open(box, using: encryptionKey),
+           let saved = try? JSONDecoder().decode([ClipItem].self, from: plain) {
+            items = Array(saved.prefix(maxCount * 2))
+            return
+        }
+
+        // Migrate legacy unencrypted history.json if present
+        let legacyURL = saveURL.deletingLastPathComponent().appendingPathComponent("history.json")
+        if let data  = try? Data(contentsOf: legacyURL),
+           let saved = try? JSONDecoder().decode([ClipItem].self, from: data) {
+            items = Array(saved.prefix(maxCount * 2))
+            flushSave()                          // re-save encrypted immediately
+            try? FileManager.default.removeItem(at: legacyURL)
+        }
+    }
+
+    // MARK: - Keychain key management
+
+    private static let keychainService = "com.weiyuankong.cliphistory"
+    private static let keychainAccount = "history-encryption-key"
+
+    private static func loadOrCreateKey() -> SymmetricKey {
+        let query: [CFString: Any] = [
+            kSecClass:       kSecClassGenericPassword,
+            kSecAttrService: keychainService,
+            kSecAttrAccount: keychainAccount,
+            kSecReturnData:  true,
+        ]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+           let data = result as? Data, data.count == 32 {
+            return SymmetricKey(data: data)
+        }
+
+        // Generate a fresh 256-bit key and store it
+        let key     = SymmetricKey(size: .bits256)
+        let keyData = key.withUnsafeBytes { Data($0) }
+        let add: [CFString: Any] = [
+            kSecClass:            kSecClassGenericPassword,
+            kSecAttrService:      keychainService,
+            kSecAttrAccount:      keychainAccount,
+            kSecValueData:        keyData,
+            kSecAttrAccessible:   kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        // Delete stale entry (wrong size) before inserting
+        SecItemDelete(query as CFDictionary)
+        SecItemAdd(add as CFDictionary, nil)
+        return key
     }
 }
 
 // MARK: - NSImage thumbnail helper
 
 private extension NSImage {
-    /// Returns PNG data resized so the longest side is ≤ maxDimension.
-    ///
-    /// Uses pixel dimensions from representations (not `size`) so clipboard
-    /// images that report size=(0,0) until rendered are handled correctly.
     func pngThumbnail(maxDimension: CGFloat = 480) -> Data? {
-        // Prefer pixel dimensions from representations over `size`
-        // (clipboard NSImages — screenshots, browser images — may report
-        //  size=(0,0) until their backing store is actually rendered).
         var pixW = representations.map(\.pixelsWide).max() ?? 0
         var pixH = representations.map(\.pixelsHigh).max() ?? 0
-
-        // Fall back to the logical size expressed in points
         if pixW == 0 { pixW = Int(size.width)  }
         if pixH == 0 { pixH = Int(size.height) }
-
         guard pixW > 0, pixH > 0 else { return nil }
 
         let scale = min(maxDimension / CGFloat(pixW), maxDimension / CGFloat(pixH), 1.0)
         let newW  = max(1, Int(floor(CGFloat(pixW) * scale)))
         let newH  = max(1, Int(floor(CGFloat(pixH) * scale)))
 
-        // NSImage(size:flipped:drawingHandler:) sets up a proper offscreen
-        // graphics context, which is required to force-render lazy clipboard
-        // images (TIFF, synthesised from file-URL copies, etc.).
         let thumb = NSImage(size: NSSize(width: newW, height: newH), flipped: false) { [self] rect in
             self.draw(in: rect)
             return true

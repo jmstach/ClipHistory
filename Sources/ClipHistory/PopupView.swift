@@ -49,13 +49,12 @@ struct PopupView: View {
                 }
             hintsBar
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 20)
                 .strokeBorder(.primary.opacity(0.07), lineWidth: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.28), radius: 28, y: 14)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .onChange(of: state.searchText) { _, _ in state.selectedIndex = 0 }
         // Reset state every time the popup is freshly opened
         .onChange(of: state.showToken) { _, _ in
@@ -118,13 +117,17 @@ struct PopupView: View {
 
             // Hide-images toggle — lives at the top so it's always reachable
             Divider().frame(height: 14).opacity(0.4)
-            Toggle(isOn: $settings.hideImages) {
+            Button { settings.hideImages.toggle() } label: {
                 Image(systemName: settings.hideImages ? "photo.slash" : "photo")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(settings.hideImages ? Color.accentColor : Color.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(settings.hideImages ? Color.accentColor.opacity(0.12) : Color.clear)
+                    )
             }
-            .toggleStyle(.checkbox)
-            .controlSize(.mini)
+            .buttonStyle(.plain)
             .help(settings.hideImages ? "Show images" : "Hide images")
         }
         .padding(.horizontal, 14)
@@ -245,9 +248,9 @@ struct PopupView: View {
                     : AnyShapeStyle(Color.primary.opacity(0.85))
                 )
 
-        case .image(let data):
+        case .image:
             HStack(spacing: 10) {
-                if let img = NSImage(data: data) {
+                if let img = store.cachedImage(for: item) {
                     Image(nsImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
