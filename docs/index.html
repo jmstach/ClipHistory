@@ -127,7 +127,7 @@
     }
     .popup-mock {
       background: var(--surface);
-      border-radius: 14px;
+      border-radius: 20px;
       border: 1px solid var(--border);
       box-shadow: 0 24px 64px rgba(0,0,0,0.18);
       overflow: hidden;
@@ -367,13 +367,18 @@
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔒</div>
-      <h3>Exclude apps</h3>
-      <p>Block password managers and other sensitive apps from ever being recorded — per-app privacy control.</p>
+      <h3>Private by design</h3>
+      <p>Clipboard data from password managers (1Password, Keychain) is automatically skipped. History is stored encrypted on disk with AES-256-GCM; the key lives in your Keychain, never on disk.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🚫</div>
+      <h3>Per-app exclusions</h3>
+      <p>Block any app from being recorded. Changes from excluded apps are silently ignored — no manual clearing needed.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🪶</div>
       <h3>Truly lightweight</h3>
-      <p>~1 MB binary. Pure Swift + SwiftUI, no Electron, no background web process, no subscription.</p>
+      <p>~1 MB binary. Pure Swift + SwiftUI, no Electron, no background web process, no subscription, no telemetry.</p>
     </div>
   </div>
 </section>
@@ -439,7 +444,7 @@
 
 <!-- ── Footer ── -->
 <footer>
-  <span>© 2025 ClipHistory. MIT License.</span>
+  <span>© 2026 ClipHistory. MIT License.</span>
   <div class="footer-links">
     <a href="https://github.com/weiykong/ClipHistory" target="_blank">GitHub</a>
     <a href="https://github.com/weiykong/ClipHistory/releases" target="_blank">Releases</a>

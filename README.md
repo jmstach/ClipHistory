@@ -37,6 +37,7 @@ If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If yo
 | ✅ Search as you type | ✅ Per-app privacy exclusions |
 | ✅ Source app icons | ✅ Survives restarts |
 | ✅ Launch at Login | ✅ No subscription, no telemetry |
+| ✅ AES-256-GCM encrypted history | ✅ Sensitive data auto-skipped |
 
 ---
 
@@ -46,8 +47,10 @@ If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If yo
 - **🖼 Text & images** — captures plain text, screenshots, images from Finder, browsers, Preview
 - **🔍 Search** — type to filter instantly; searches content and source app name
 - **📌 Pin favourites** — pinned items float to the top and are never evicted by newer copies
-- **🔒 Privacy controls** — exclude apps (e.g. 1Password) so sensitive data is never recorded
-- **👁 Hide images toggle** — one click in the popup to go text-only
+- **🔐 Encrypted history** — disk storage is AES-256-GCM encrypted; the key lives in your Keychain, never on disk
+- **🔒 Sensitive data protection** — items marked by password managers (`org.nspasteboard.ConcealedType`) are automatically skipped before recording
+- **🚫 Per-app exclusions** — block any app from being recorded; changes from excluded apps are silently ignored
+- **👁 Hide images toggle** — one click in the popup header to go text-only
 - **🏷 Source app icons** — see at a glance which app each item came from
 - **🪶 Truly lightweight** — ~1 MB, pure SwiftUI, no background web process, no telemetry
 
@@ -105,7 +108,7 @@ Sources/ClipHistory/
 ├── main.swift                  # NSApplication entry point
 ├── AppDelegate.swift           # Menu bar, hotkey, clipboard polling timer
 ├── AppSettings.swift           # @Observable settings + UserDefaults persistence
-├── ClipboardStore.swift        # Item store, polling, PNG thumbnailing
+├── ClipboardStore.swift        # Item store, polling, AES-256-GCM encryption, PNG thumbnailing
 ├── PopupWindowController.swift # NSPanel + CGEventTap keyboard intercept
 ├── PopupView.swift             # SwiftUI popup UI
 ├── PopupState.swift            # Shared search / selection state
@@ -128,8 +131,14 @@ Keyboard events are intercepted at the OS session level while the popup is visib
 **`@Observable` + `@Bindable`**  
 Modern Swift observation macros throughout — no `@StateObject` or `@ObservedObject`.
 
+**AES-256-GCM encrypted storage**  
+History is saved as `history.json.enc` — a single AES-GCM sealed box. A 256-bit key is generated on first launch and stored in the Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Saves are debounced (1 s) so clipboard bursts produce a single write.
+
+**Sensitive data protection**  
+Before recording any clipboard event, the store checks for `org.nspasteboard.ConcealedType` — the standard pasteboard type that 1Password and other credential managers set. Items carrying it are silently dropped.
+
 **Image thumbnailing**  
-Clipboard images (screenshots, browser copies, Finder files) are downscaled to ≤ 480 px PNG at capture time using `NSImage(size:flipped:drawingHandler:)`, which forces lazy clipboard images that report `size=(0,0)` to render before sampling.
+Clipboard images (screenshots, browser copies, Finder files) are downscaled to ≤ 480 px PNG at capture time using `NSImage(size:flipped:drawingHandler:)`, which forces lazy clipboard images that report `size=(0,0)` to render before sampling. Decoded `NSImage` instances are cached in `NSCache` keyed by item UUID to avoid re-inflating PNG bytes on every render pass.
 
 </details>
 
@@ -144,4 +153,4 @@ Please **open an issue first** before starting any large change so we can discus
 
 ## License
 
-[MIT](LICENSE) © 2025 Weiyuan Kong
+[MIT](LICENSE) © 2026 Weiyuan Kong
