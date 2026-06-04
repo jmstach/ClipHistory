@@ -21,7 +21,7 @@ One hotkey. Instant popup. Text and images. No subscription.
 ## What it looks like
 
 <div align="center">
-  <img src="docs/screenshot-context.png" width="700" alt="ClipHistory popup in front of a text editor" />
+  <img src="docs/screenshot.png" width="700" alt="ClipHistory popup in front of a text editor" />
 </div>
 
 ---
