@@ -230,6 +230,14 @@ final class ClipboardStore {
         scheduleSave()
     }
 
+    func remove(id: UUID) {
+        if let idx = items.firstIndex(where: { $0.id == id }) {
+            items.remove(at: idx)
+            imageCache.removeObject(forKey: id as NSUUID)
+            scheduleSave()
+        }
+    }
+
     func filtered(query: String, showImages: Bool = true) -> [ClipItem] {
         var result = items
         if !showImages { result = result.filter { !$0.isImage } }

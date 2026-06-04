@@ -8,8 +8,6 @@ struct PopupView: View {
     let onDismiss: () -> Void
 
     var filtered: [ClipItem] {
-        // Access store.items, settings.hideImages and state.searchText directly
-        // so SwiftUI's @Observable tracker registers all three dependencies.
         var result = store.items
         if settings.hideImages { result = result.filter { !$0.isImage } }
         let q = state.searchText
@@ -20,25 +18,18 @@ struct PopupView: View {
         }
     }
 
-    /// True once the user has clicked on the search bar area.
     @State private var searchFocused = false
-    /// Drives the blink animation — toggled by `onChange(of: searchFocused)`.
     @State private var cursorPhase   = false
-    /// Last recorded hover position. Hover activates after the mouse moves
-    /// at least 6 pts from its initial entry point, so mousing over the popup
-    /// while it opens doesn't immediately change the selection.
     @State private var lastHoverPt: CGPoint? = nil
     @State private var hoverEnabled         = false
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
-            Divider().opacity(0.12)
+            header
             itemList
                 .onContinuousHover { phase in
                     guard case .active(let pt) = phase else { return }
                     if let last = lastHoverPt {
-                        // Enable hover once the mouse moves ≥ 6 pts in any direction.
                         if !hoverEnabled {
                             let dx = pt.x - last.x, dy = pt.y - last.y
                             if dx*dx + dy*dy >= 36 { hoverEnabled = true }
@@ -49,14 +40,13 @@ struct PopupView: View {
                 }
             hintsBar
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(.primary.opacity(0.07), lineWidth: 1)
+        .background {
+            RoundedRectangle(cornerRadius: AppTheme.panelRadius)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.12), radius: 32, y: 16)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.panelRadius))
         .onChange(of: state.searchText) { _, _ in state.selectedIndex = 0 }
-        // Reset state every time the popup is freshly opened
         .onChange(of: state.showToken) { _, _ in
             searchFocused = false
             cursorPhase   = false
@@ -70,28 +60,103 @@ struct PopupView: View {
         hoverEnabled = false
     }
 
-    // MARK: - Search bar
+    // MARK: - Header
 
-    private var searchBar: some View {
-        HStack(spacing: 9) {
+    private var header: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("CLIPHISTORY")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .kerning(2)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary.opacity(0.8), .primary.opacity(0.4)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Text(headerSubtitle)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Button { settings.hideImages.toggle() } label: {
+                        Image(systemName: settings.hideImages ? "photo.slash" : "photo")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(settings.hideImages ? Color.accentColor : Color.primary.opacity(0.4))
+                            .frame(width: 28, height: 28)
+                            .background(
+                                Circle()
+                                    .fill(settings.hideImages ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.03))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help(settings.hideImages ? "Show images" : "Hide images")
+
+                    Button { 
+                        let alert = NSAlert()
+                        alert.messageText = "Clear Clipboard History?"
+                        alert.informativeText = "This will permanently remove all stored items."
+                        alert.addButton(withTitle: "Clear All")
+                        alert.addButton(withTitle: "Cancel")
+                        alert.buttons[0].hasDestructiveAction = true
+                        
+                        if alert.runModal() == .alertFirstButtonReturn {
+                            store.clearAll()
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.red.opacity(0.4))
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.red.opacity(0.03)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear History")
+                }
+            }
+
+            searchField
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+    }
+
+    private var headerSubtitle: String {
+        if filtered.isEmpty {
+            return store.items.isEmpty ? "Ready to capture" : "No results"
+        }
+        return "\(filtered.count) item\(filtered.count == 1 ? "" : "s")"
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(searchFocused ? Color.accentColor : Color.secondary)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(searchFocused ? Color.accentColor : Color.primary.opacity(0.3))
+                .scaleEffect(searchFocused ? 1.1 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: searchFocused)
 
             ZStack(alignment: .leading) {
                 if state.searchText.isEmpty {
-                    Text("Search clipboard…")
-                        .font(.system(size: 13.5))
-                        .foregroundStyle(.primary.opacity(0.28))
+                    Text("Search history...")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.primary.opacity(0.25))
                 }
+
                 HStack(spacing: 1) {
                     Text(state.searchText.isEmpty ? "" : state.searchText)
-                        .font(.system(size: 13.5))
-                        .foregroundStyle(.primary)
-                    // Blinking caret — only after the user clicks the search bar
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.primary.opacity(0.9))
+
                     Rectangle()
                         .fill(Color.accentColor)
-                        .frame(width: 1.5, height: 14)
+                        .frame(width: 2, height: 16)
                         .opacity(searchFocused && cursorPhase ? 1 : 0)
                         .animation(
                             searchFocused
@@ -99,9 +164,6 @@ struct PopupView: View {
                                 : .default,
                             value: cursorPhase
                         )
-                        .onChange(of: searchFocused) { _, focused in
-                            cursorPhase = focused   // kick off the repeat when focused
-                        }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,30 +171,15 @@ struct PopupView: View {
             if !state.searchText.isEmpty {
                 Button { state.searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.primary.opacity(0.2))
                 }
                 .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
             }
-
-            // Hide-images toggle — lives at the top so it's always reachable
-            Divider().frame(height: 14).opacity(0.4)
-            Button { settings.hideImages.toggle() } label: {
-                Image(systemName: settings.hideImages ? "photo.slash" : "photo")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(settings.hideImages ? Color.accentColor : Color.secondary)
-                    .frame(width: 22, height: 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(settings.hideImages ? Color.accentColor.opacity(0.12) : Color.clear)
-                    )
-            }
-            .buttonStyle(.plain)
-            .help(settings.hideImages ? "Show images" : "Hide images")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        // Clicking anywhere in the bar activates the cursor
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture { searchFocused = true }
     }
@@ -142,16 +189,7 @@ struct PopupView: View {
     @ViewBuilder
     private var itemList: some View {
         if filtered.isEmpty {
-            VStack(spacing: 9) {
-                Image(systemName: store.items.isEmpty ? "clipboard" : "magnifyingglass")
-                    .font(.system(size: 26, weight: .ultraLight))
-                    .foregroundStyle(.tertiary)
-                Text(store.items.isEmpty ? "Nothing copied yet" : "No matches")
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(28)
+            emptyState
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -174,79 +212,97 @@ struct PopupView: View {
         }
     }
 
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: AppTheme.cardRadius)
+                    .fill(AppTheme.softFill)
+                    .frame(width: 44, height: 44)
+                Image(systemName: store.items.isEmpty ? "clipboard" : "magnifyingglass")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 4) {
+                Text(store.items.isEmpty ? "Nothing copied yet" : "No matches")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary.opacity(0.82))
+                Text(store.items.isEmpty ? "Your recent clips will appear here." : "Try a different search or show images.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(28)
+    }
+
     // MARK: - Row
 
     private func itemRow(_ item: ClipItem, index: Int) -> some View {
         let selected = index == state.selectedIndex
         return Button { onSelect(item) } label: {
-            HStack(alignment: .center, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                appIconView(item, selected: selected)
 
-                // Selection bar
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(selected ? Color.accentColor : Color.clear)
-                    .frame(width: 3)
-                    .padding(.vertical, 6)
-                    .padding(.trailing, 9)
-
-                // Content area
                 rowContent(for: item, selected: selected)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.trailing, 4)
 
-                // Pin button — always visible when pinned, fades in on hover
-                Button {
-                    store.togglePin(id: item.id)
-                } label: {
-                    Image(systemName: item.pinned ? "pin.fill" : "pin")
-                        .font(.system(size: 10))
-                        .foregroundStyle(item.pinned ? Color.accentColor : Color.secondary.opacity(0.5))
-                }
-                .buttonStyle(.plain)
-                .opacity(item.pinned || selected ? 1 : 0)
-                .padding(.trailing, 6)
-
-                // Source-app icon + age stamp
-                VStack(alignment: .trailing, spacing: 3) {
-                    if let icon = item.sourceApp?.icon {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .frame(width: 13, height: 13)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                    }
-                    Text(shortAge(item.date))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.quaternary)
-                }
-                .fixedSize()
+                trailingMeta(for: item, selected: selected)
             }
-            .padding(.leading, 8)
-            .padding(.trailing, 11)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(selected ? Color.accentColor.opacity(0.12) : Color.clear)
+                RoundedRectangle(cornerRadius: AppTheme.rowRadius)
+                    .fill(selected ? Color.primary.opacity(0.06) : Color.clear)
             }
+            .scaleEffect(selected ? 1.015 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
         }
         .buttonStyle(.plain)
         .onHover { if $0 && hoverEnabled { state.selectedIndex = index } }
     }
 
-    // MARK: - Per-kind content
+    @ViewBuilder
+    private func appIconView(_ item: ClipItem, selected: Bool) -> some View {
+        Group {
+            if let icon = item.sourceApp?.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 28, height: 28)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(selected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Image(systemName: item.isImage ? "photo" : "doc.text")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(selected ? Color.accentColor : Color.primary.opacity(0.4))
+                    }
+            }
+        }
+    }
 
     @ViewBuilder
     private func rowContent(for item: ClipItem, selected: Bool) -> some View {
         switch item.content {
 
         case .text(let text):
-            Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
-                .font(.system(size: 12.5))
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .foregroundStyle(
-                    selected
-                    ? AnyShapeStyle(.primary)
-                    : AnyShapeStyle(Color.primary.opacity(0.85))
-                )
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.primary.opacity(selected ? 1 : 0.85))
+
+                if let app = item.sourceApp {
+                    Text(app.name)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+            }
 
         case .image:
             HStack(spacing: 10) {
@@ -254,28 +310,65 @@ struct PopupView: View {
                     Image(nsImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 54, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .strokeBorder(.primary.opacity(0.08), lineWidth: 1)
-                        )
+                        .frame(width: 48, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(.primary.opacity(0.05), lineWidth: 0.5)
+                        }
+                        .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
                 }
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Image")
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary.opacity(0.9))
                     if let app = item.sourceApp {
-                        Text("from \(app.name)")
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(.tertiary)
+                        Text(app.name)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.secondary.opacity(0.5))
                     }
                 }
             }
         }
     }
 
-    // MARK: - Keyboard hints footer
+    private func trailingMeta(for item: ClipItem, selected: Bool) -> some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            if item.pinned || selected {
+                HStack(spacing: 4) {
+                    Button {
+                        store.remove(id: item.id)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundStyle(.red.opacity(0.4))
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        store.togglePin(id: item.id)
+                    } label: {
+                        Image(systemName: item.pinned ? "pin.fill" : "pin")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(item.pinned ? Color.accentColor : Color.primary.opacity(0.2))
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+
+            Text(shortAge(item.date))
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary.opacity(0.2))
+        }
+        .frame(width: 44, alignment: .trailing)
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: selected)
+    }
+
+    // MARK: - Hints bar
 
     private var hintsBar: some View {
         HStack(spacing: 12) {
@@ -283,33 +376,35 @@ struct PopupView: View {
             hintChip(key: "↵",  label: "paste")
             hintChip(key: "esc", label: "close")
             Spacer()
-            if !filtered.isEmpty {
-                Text("\(filtered.count) item\(filtered.count == 1 ? "" : "s")")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.quaternary)
+            if settings.hideImages {
+                HStack(spacing: 4) {
+                    Image(systemName: "photo.slash")
+                    Text("Images hidden")
+                }
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.accentColor.opacity(0.4))
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) { Divider().opacity(0.10) }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .opacity(0.4) // Make the whole bar very subtle
     }
 
     private func hintChip(key: String, label: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3) {
             Text(key)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2.5)
-                .background(Color.primary.opacity(0.08),
-                            in: RoundedRectangle(cornerRadius: 4))
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(.primary.opacity(0.3))
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 3))
             Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary.opacity(0.15))
         }
     }
 
-    // MARK: - Static age string
+    // MARK: - Age string
 
     private func shortAge(_ date: Date) -> String {
         let s = max(0, Int(Date.now.timeIntervalSince(date)))

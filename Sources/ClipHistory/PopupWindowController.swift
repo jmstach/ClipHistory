@@ -112,7 +112,7 @@ final class PopupWindowController {
         p.hidesOnDeactivate  = false
         p.backgroundColor    = .clear
         p.isOpaque           = false
-        p.hasShadow          = false  // SwiftUI draws its own shaped shadow; NSPanel shadow is rectangular and bleeds at corners
+        p.hasShadow          = false  // Shadow drawn via SwiftUI .shadow() modifier so it follows the rounded shape
 
         p.contentView = NSHostingView(rootView: PopupView(
             store:     store,

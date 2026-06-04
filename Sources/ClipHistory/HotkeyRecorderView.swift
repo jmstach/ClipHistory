@@ -59,24 +59,24 @@ final class HotkeyRecorderNSView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let rect = bounds.insetBy(dx: 0.5, dy: 0.5)
-        let path = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
 
-        // Background
         (isRecording
-            ? NSColor.controlAccentColor.withAlphaComponent(0.1)
-            : NSColor.controlBackgroundColor
+            ? NSColor.controlAccentColor.withAlphaComponent(0.12)
+            : NSColor.controlBackgroundColor.withAlphaComponent(0.82)
         ).setFill()
         path.fill()
 
-        // Border
-        (isRecording ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
+        (isRecording
+            ? NSColor.controlAccentColor.withAlphaComponent(0.70)
+            : NSColor.separatorColor.withAlphaComponent(0.70)
+        ).setStroke()
         path.lineWidth = 1
         path.stroke()
 
-        // Label
         let label = isRecording ? "Type shortcut…" : hotkey.displayString
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .medium),
+            .font: NSFont.monospacedSystemFont(ofSize: 12.5, weight: .semibold),
             .foregroundColor: isRecording ? NSColor.controlAccentColor : NSColor.labelColor,
         ]
         let str = NSAttributedString(string: label, attributes: attrs)
