@@ -326,19 +326,170 @@
   <p class="req">macOS 14 Sonoma or later &nbsp;·&nbsp; Free &amp; open source</p>
 </section>
 
-<!-- ── Screenshot ── -->
-<div style="text-align:center; padding: 0 24px 80px;">
-  <img
-    src="screenshot.png"
-    alt="ClipHistory popup showing clipboard history with text and images"
-    style="
-      max-width: 380px;
-      width: 100%;
-      border-radius: 16px;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08);
-    "
-  />
+<!-- ── High-Fidelity UI Mockup ── -->
+<div class="preview-container">
+  <div class="popup-2026">
+    <div class="p-header">
+      <div class="p-header-top">
+        <div class="p-branding">
+          <div class="p-title">CLIPHISTORY</div>
+          <div class="p-subtitle">3 items</div>
+        </div>
+        <div class="p-actions">
+          <div class="p-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div>
+          <div class="p-action-btn p-trash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></div>
+        </div>
+      </div>
+      <div class="p-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="p-search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div class="p-search-text">Search history...</div>
+      </div>
+    </div>
+    
+    <div class="p-list">
+      <div class="p-item selected">
+        <div class="p-icon" style="background: #0071e3;"><svg viewBox="0 0 24 24" fill="white"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
+        <div class="p-content">
+          <div class="p-item-title">Design Proposal 2026.pdf</div>
+          <div class="p-item-app">Finder</div>
+        </div>
+        <div class="p-meta">
+          <div class="p-row-actions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2.5" class="p-row-icon"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="p-row-icon"><path d="M12 2v8"/><path d="m5 12 7-10 7 10"/><path d="M12 22v-8"/></svg>
+          </div>
+          <div class="p-time">2m</div>
+        </div>
+      </div>
+      
+      <div class="p-item">
+        <div class="p-icon" style="background: #ff9500;"><svg viewBox="0 0 24 24" fill="white"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 9H5V6h14v7z"/></svg></div>
+        <div class="p-content">
+          <div class="p-item-title">https://apple.com/macbook-pro</div>
+          <div class="p-item-app">Safari</div>
+        </div>
+        <div class="p-meta">
+          <div class="p-time">12m</div>
+        </div>
+      </div>
+
+      <div class="p-item">
+        <div class="p-icon-img">
+          <div class="p-thumb" style="background: linear-gradient(135deg, #af4261, #f38c8c);"></div>
+        </div>
+        <div class="p-content">
+          <div class="p-item-title">Image</div>
+          <div class="p-item-app">Photos</div>
+        </div>
+        <div class="p-meta">
+          <div class="p-time">1h</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="p-footer">
+      <div class="p-hint"><span>↑↓</span> navigate</div>
+      <div class="p-hint"><span>↵</span> paste</div>
+      <div class="p-hint"><span>esc</span> close</div>
+    </div>
+  </div>
 </div>
+
+<style>
+  .preview-container {
+    display: flex;
+    justify-content: center;
+    padding: 0 24px 100px;
+    perspective: 1000px;
+  }
+  
+  .popup-2026 {
+    width: 360px;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border-radius: 28px;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+    overflow: hidden;
+    user-select: none;
+    transform: rotateX(2deg);
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  
+  .popup-2026:hover {
+    transform: rotateX(0deg) translateY(-5px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .popup-2026 {
+      background: rgba(40, 40, 42, 0.6);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
+    }
+  }
+
+  /* Header */
+  .p-header { padding: 20px 20px 14px; }
+  .p-header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .p-title { 
+    font-size: 11px; font-weight: 900; letter-spacing: 0.18em; color: var(--text); opacity: 0.8;
+    background: linear-gradient(to bottom right, var(--text), var(--muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .p-subtitle { font-size: 10px; font-weight: 700; color: var(--muted); opacity: 0.5; margin-top: 2px; }
+  .p-actions { display: flex; gap: 8px; }
+  .p-action-btn { 
+    width: 30px; height: 30px; border-radius: 50%; 
+    background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;
+    color: var(--text); opacity: 0.5;
+  }
+  @media (prefers-color-scheme: dark) { .p-action-btn { background: rgba(255,255,255,0.06); } }
+  .p-action-btn svg { width: 13px; height: 13px; }
+  .p-action-btn.p-trash { color: #ff3b30; background: rgba(255,59,48,0.05); }
+
+  /* Search */
+  .p-search { display: flex; align-items: center; gap: 10px; padding-left: 4px; }
+  .p-search-icon { width: 14px; height: 14px; color: var(--accent); }
+  .p-search-text { font-size: 14px; font-weight: 500; color: var(--text); opacity: 0.3; }
+
+  /* List */
+  .p-list { padding: 4px 8px 12px; }
+  .p-item { 
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .p-item.selected { background: rgba(0,0,0,0.04); transform: scale(1.02); }
+  @media (prefers-color-scheme: dark) { .p-item.selected { background: rgba(255,255,255,0.06); } }
+  
+  .p-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .p-icon svg { width: 15px; height: 15px; }
+  
+  .p-icon-img { flex-shrink: 0; }
+  .p-thumb { width: 48px; height: 32px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  
+  .p-content { flex: 1; overflow: hidden; }
+  .p-item-title { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-item-app { font-size: 10.5px; font-weight: 800; color: var(--muted); opacity: 0.4; text-transform: uppercase; margin-top: 1px; }
+  
+  .p-meta { text-align: right; }
+  .p-time { font-size: 9.5px; font-weight: 800; color: var(--muted); opacity: 0.3; }
+  .p-row-actions { display: none; gap: 4px; margin-bottom: 4px; }
+  .p-item.selected .p-row-actions { display: flex; }
+  .p-row-icon { width: 14px; height: 14px; opacity: 0.6; }
+
+  /* Footer */
+  .p-footer { 
+    display: flex; gap: 14px; padding: 12px 20px 16px; 
+    border-top: 1px solid rgba(0,0,0,0.03); opacity: 0.4;
+  }
+  @media (prefers-color-scheme: dark) { .p-footer { border-top-color: rgba(255,255,255,0.03); } }
+  .p-hint { font-size: 10px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 5px; }
+  .p-hint span { 
+    font-family: monospace; padding: 2px 4px; background: rgba(0,0,0,0.05); border-radius: 4px;
+    font-size: 9px;
+  }
+  @media (prefers-color-scheme: dark) { .p-hint span { background: rgba(255,255,255,0.08); } }
+</style>
 
 <!-- ── Features ── -->
 <section class="section" id="features">
