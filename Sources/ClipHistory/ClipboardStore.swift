@@ -195,7 +195,13 @@ final class ClipboardStore {
         }
 
         // ── 2. Direct image data ──────────────────────────────────────────────
-        if let imgs = pb.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage],
+        // Skip if the pasteboard also carries text — apps like Excel write both
+        // a bitmap preview and structured text/CSV simultaneously. Preferring
+        // text means cell content stays editable when pasted into a text editor.
+        let pasteboardHasText = pb.string(forType: .string)
+            .map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+        if !pasteboardHasText,
+           let imgs = pb.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage],
            let img  = imgs.first(where: { $0.isValid }),
            let thumb = img.pngThumbnail() {
             add(ClipItem(content: .image(thumb), sourceApp: source))
