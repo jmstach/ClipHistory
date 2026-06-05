@@ -62,10 +62,16 @@ If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If yo
 
 1. [**Download ClipHistory.dmg**](https://github.com/weiykong/ClipHistory/releases/latest/download/ClipHistory.dmg)
 2. Open the DMG and drag **ClipHistory.app** to `/Applications`
-3. Right-click → **Open** on first launch *(Gatekeeper prompt — one time only)*
+3. **First launch — bypass Gatekeeper:**
+   - Go to `/Applications` in Finder
+   - **Right-click** (or Control-click) **ClipHistory.app** → **Open**
+   - Click **Open** in the dialog that appears
+   - *(This is a one-time step — double-click works normally after that)*
 4. Grant **Accessibility** permission when the onboarding screen asks
 
-> Or bypass Gatekeeper from the terminal:
+> **Why does this happen?** ClipHistory is free and open source — it isn't signed with a paid Apple Developer certificate. macOS flags any app it hasn't verified. Right-clicking to open tells macOS you trust it.
+
+> **Prefer the terminal?**
 > ```bash
 > xattr -d com.apple.quarantine /Applications/ClipHistory.app
 > ```
