@@ -204,6 +204,10 @@
     .step-body { flex: 1; }
     .step-body strong { display: block; font-size: 15px; margin-bottom: 3px; }
     .step-body span { font-size: 13px; color: var(--muted); }
+    .code-block { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+    .code-block code { font-family: ui-monospace, monospace; font-size: 12px; color: #e2e8f0; flex: 1; user-select: all; }
+    .copy-btn { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.1); border: none; border-radius: 5px; color: #94a3b8; padding: 3px 9px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .copy-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
     code {
       font-family: "SF Mono", ui-monospace, monospace;
       font-size: 12px;
@@ -522,8 +526,13 @@
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-body">
-        <strong>Right-click → Open (first launch only)</strong>
-        <span>In Finder, <strong>right-click</strong> ClipHistory.app and choose <strong>Open</strong>. Click <strong>Open</strong> in the dialog. macOS flags free apps that aren't signed with a paid certificate — this one-time step tells it you trust the app.</span>
+        <strong>Unlock the app (one-time)</strong>
+        <span>macOS blocks unsigned apps by default. Open <strong>Terminal</strong> and run:</span>
+        <div class="code-block">
+          <code id="gatekeeper-cmd">xattr -d com.apple.quarantine /Applications/ClipHistory.app</code>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('gatekeeper-cmd').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+        </div>
+        <span style="margin-top:6px;display:block;">Then double-click ClipHistory to open it normally.</span>
       </div>
     </div>
     <div class="step">
