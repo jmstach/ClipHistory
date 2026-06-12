@@ -141,10 +141,19 @@ final class PopupWindowController {
             place:            .headInsertEventTap,
             options:          .defaultTap,          // intercepting (events can be consumed)
             eventsOfInterest: mask,
-            callback: { (_, _, cgEvent, userInfo) -> Unmanaged<CGEvent>? in
+            callback: { (_, type, cgEvent, userInfo) -> Unmanaged<CGEvent>? in
                 guard let userInfo else { return Unmanaged.passRetained(cgEvent) }
                 let ctrl = Unmanaged<PopupWindowController>
                     .fromOpaque(userInfo).takeUnretainedValue()
+                // macOS silently disables taps that are slow to respond (e.g.
+                // after sleep/wake or heavy load). Re-enable instead of letting
+                // keyboard handling die for the rest of the session.
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    if let tap = ctrl.eventTap {
+                        CGEvent.tapEnable(tap: tap, enable: true)
+                    }
+                    return nil
+                }
                 return ctrl.handleKeyDown(event: cgEvent)
             },
             userInfo: selfPtr
