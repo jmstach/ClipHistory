@@ -293,11 +293,20 @@ final class ClipboardStore {
 
     private func flushSave() {
         pendingSave = nil
+        // Snapshot on the main thread, then encrypt + write off it so a large
+        // history never hitches the popup mid-animation.
         guard let plain = try? JSONEncoder().encode(items) else { return }
-        guard let sealed = try? AES.GCM.seal(plain, using: encryptionKey),
-              let combined = sealed.combined else { return }
-        try? combined.write(to: saveURL, options: .atomic)
+        let key = encryptionKey
+        let url = saveURL
+        ClipboardStore.saveQueue.async {
+            guard let sealed = try? AES.GCM.seal(plain, using: key),
+                  let combined = sealed.combined else { return }
+            try? combined.write(to: url, options: .atomic)
+        }
     }
+
+    private static let saveQueue = DispatchQueue(label: "com.weiyuankong.cliphistory.save",
+                                                 qos: .utility)
 
     // MARK: - Load (decrypts + falls back to legacy plaintext)
 

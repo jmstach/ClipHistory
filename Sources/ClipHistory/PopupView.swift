@@ -253,8 +253,9 @@ struct PopupView: View {
                 RoundedRectangle(cornerRadius: AppTheme.rowRadius)
                     .fill(selected ? Color.primary.opacity(0.06) : Color.clear)
             }
-            .scaleEffect(selected ? 1.015 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selected)
+            // Fast easeOut instead of a spring: when the cursor sweeps across
+            // several rows the highlight must keep up, not bounce behind it.
+            .animation(.easeOut(duration: 0.1), value: selected)
         }
         .buttonStyle(.plain)
         .onHover { if $0 && hoverEnabled { state.selectedIndex = index } }
