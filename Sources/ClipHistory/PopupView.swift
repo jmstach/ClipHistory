@@ -7,15 +7,12 @@ struct PopupView: View {
     let onSelect:  (ClipItem) -> Void
     let onDismiss: () -> Void
 
+    // Single source of truth for filtering — same call the window controller
+    // uses, so selection indices always agree between view and key handling.
+    // Reading state.searchText / settings.hideImages here (and store.items
+    // inside the store method) registers all three @Observable dependencies.
     var filtered: [ClipItem] {
-        var result = store.items
-        if settings.hideImages { result = result.filter { !$0.isImage } }
-        let q = state.searchText
-        guard !q.isEmpty else { return result }
-        return result.filter {
-            $0.preview.localizedCaseInsensitiveContains(q) ||
-            ($0.sourceApp?.name.localizedCaseInsensitiveContains(q) ?? false)
-        }
+        store.filtered(query: state.searchText, showImages: !settings.hideImages)
     }
 
     @State private var searchFocused = false
