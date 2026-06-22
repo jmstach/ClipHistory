@@ -23,7 +23,7 @@ A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHi
 ## What it looks like
 
 <div align="center">
-  <img src="docs/screenshot.png" width="480" alt="ClipHistory popup in front of a text editor" />
+  <img src="docs/popup.png" width="480" alt="ClipHistory popup in front of a text editor" />
 </div>
 
 ---
