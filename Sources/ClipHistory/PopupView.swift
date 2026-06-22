@@ -369,9 +369,10 @@ struct PopupView: View {
     // MARK: - Hints bar
 
     private var hintsBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             hintChip(key: "↑↓", label: "navigate")
             hintChip(key: "↵",  label: "paste")
+            hintChip(key: "⇧↵", label: "plain")
             hintChip(key: "esc", label: "close")
             Spacer()
             if settings.hideImages {

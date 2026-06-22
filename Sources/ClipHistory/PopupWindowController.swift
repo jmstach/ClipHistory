@@ -59,7 +59,7 @@ final class PopupWindowController {
 
     // MARK: - Paste
 
-    func pasteItem(_ item: ClipItem) {
+    func pasteItem(_ item: ClipItem, plain: Bool = false) {
         // Suppress the monitor so our own clipboard write doesn't re-insert the item.
         store.suppressNextPoll = true
 
@@ -68,6 +68,12 @@ final class PopupWindowController {
 
         switch item.content {
         case .text(let text):
+            // Styled paste (↵): write the captured RTF plus a plain-text fallback
+            // for apps that don't accept RTF. Plain paste (⇧↵), or items with no
+            // captured RTF, write only the plain string.
+            if !plain, let rtf = item.rtf {
+                pb.setData(rtf, forType: .rtf)
+            }
             pb.setString(text, forType: .string)
         case .image(let data):
             if let img = NSImage(data: data) { pb.writeObjects([img]) }
@@ -90,10 +96,10 @@ final class PopupWindowController {
                        showImages: !settings.hideImages)
     }
 
-    private func selectCurrentItem() {
+    private func selectCurrentItem(plain: Bool = false) {
         let items = filteredItems
         guard items.indices.contains(popupState.selectedIndex) else { return }
-        pasteItem(items[popupState.selectedIndex])
+        pasteItem(items[popupState.selectedIndex], plain: plain)
     }
 
     // MARK: - Panel construction
@@ -212,7 +218,9 @@ final class PopupWindowController {
             return nil
 
         case 36, 76:                    // Return / numpad Enter
-            DispatchQueue.main.async { [weak self] in self?.selectCurrentItem() }
+            // ⇧↵ pastes as plain text; ↵ keeps the original formatting.
+            let plain = flags.contains(.maskShift)
+            DispatchQueue.main.async { [weak self] in self?.selectCurrentItem(plain: plain) }
             return nil
 
         case 51:                        // Backspace / Delete

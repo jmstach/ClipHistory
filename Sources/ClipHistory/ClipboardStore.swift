@@ -63,13 +63,19 @@ struct ClipItem: Identifiable, Equatable {
     let date:      Date
     let sourceApp: SourceApp?
     var pinned:    Bool
+    /// Original RTF representation for text items, captured at copy time so a
+    /// styled paste can reproduce fonts/colour. nil when the source app put no
+    /// rich text on the pasteboard. `content` stays the plain-text source of
+    /// truth for search, preview, dedup, and the plain-paste path.
+    let rtf:       Data?
 
-    init(content: ClipContent, date: Date = .now, sourceApp: SourceApp? = nil, pinned: Bool = false) {
+    init(content: ClipContent, date: Date = .now, sourceApp: SourceApp? = nil, pinned: Bool = false, rtf: Data? = nil) {
         self.id        = UUID()
         self.content   = content
         self.date      = date
         self.sourceApp = sourceApp
         self.pinned    = pinned
+        self.rtf       = rtf
     }
 
     var preview: String {
@@ -91,7 +97,7 @@ struct ClipItem: Identifiable, Equatable {
 }
 
 extension ClipItem: Codable {
-    private enum CK: String, CodingKey { case id, content, date, sourceApp, text, pinned }
+    private enum CK: String, CodingKey { case id, content, date, sourceApp, text, pinned, rtf }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CK.self)
@@ -100,6 +106,7 @@ extension ClipItem: Codable {
         try c.encode(date,      forKey: .date)
         try c.encodeIfPresent(sourceApp, forKey: .sourceApp)
         if pinned { try c.encode(true, forKey: .pinned) }
+        try c.encodeIfPresent(rtf, forKey: .rtf)
     }
 
     init(from decoder: Decoder) throws {
@@ -108,6 +115,7 @@ extension ClipItem: Codable {
         date      = try  c.decode(Date.self,      forKey: .date)
         sourceApp = try? c.decode(SourceApp.self, forKey: .sourceApp)
         pinned    = (try? c.decode(Bool.self,     forKey: .pinned)) ?? false
+        rtf       = try? c.decode(Data.self,      forKey: .rtf)
 
         if let cont = try? c.decode(ClipContent.self, forKey: .content) {
             content = cont
@@ -213,7 +221,11 @@ final class ClipboardStore {
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               text != items.first?.textContent
         else { return }
-        add(ClipItem(content: .text(text), sourceApp: source))
+        // Capture the rich representation if the source app provided one, so a
+        // styled paste can reproduce it. RTF carries fonts/colour but not the
+        // web-tracking metadata that HTML clipboard payloads can.
+        let rtf = pb.data(forType: .rtf)
+        add(ClipItem(content: .text(text), sourceApp: source, rtf: rtf))
     }
 
     func clearAll() {

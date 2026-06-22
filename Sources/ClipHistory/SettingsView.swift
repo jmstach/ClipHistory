@@ -88,7 +88,7 @@ struct SettingsView: View {
                 SettingsRow(icon: "keyboard.fill",
                             iconColor: .blue,
                             label: "Open Popup",
-                            hint: "The combination to show your history.") {
+                            hint: "↵ pastes with formatting, ⇧↵ as plain text.") {
                     HotkeyRecorder(hotkey: $settings.hotkey)
                         .frame(width: 162, height: 32)
                 }
