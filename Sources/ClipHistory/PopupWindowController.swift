@@ -102,6 +102,26 @@ final class PopupWindowController {
         pasteItem(items[popupState.selectedIndex], plain: plain)
     }
 
+    private func togglePinCurrent() {
+        let items = filteredItems
+        guard items.indices.contains(popupState.selectedIndex) else { return }
+        let id = items[popupState.selectedIndex].id
+        store.togglePin(id: id)
+        // Pinning reorders the list — keep the selection on the same item.
+        if let newIdx = filteredItems.firstIndex(where: { $0.id == id }) {
+            popupState.selectedIndex = newIdx
+        }
+    }
+
+    private func deleteCurrent() {
+        let items = filteredItems
+        guard items.indices.contains(popupState.selectedIndex) else { return }
+        store.remove(id: items[popupState.selectedIndex].id)
+        // Clamp selection to the shortened list.
+        let count = filteredItems.count
+        popupState.selectedIndex = min(popupState.selectedIndex, max(0, count - 1))
+    }
+
     // MARK: - Panel construction
 
     private func buildPanel() {
@@ -190,8 +210,23 @@ final class PopupWindowController {
         let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
         let flags   = event.flags
 
-        // Always pass Cmd and Ctrl combos through so the OS / App A can handle
-        // things like Cmd+Q, Cmd+Tab, Ctrl+C, etc.
+        // ⌘-based actions on the selected item, intercepted before the Cmd
+        // passthrough below so they don't leak to the app behind the popup.
+        if flags.contains(.maskCommand) && !flags.contains(.maskControl) {
+            switch keyCode {
+            case 35:                    // ⌘P → pin / unpin
+                DispatchQueue.main.async { [weak self] in self?.togglePinCurrent() }
+                return nil
+            case 51:                    // ⌘⌫ → delete
+                DispatchQueue.main.async { [weak self] in self?.deleteCurrent() }
+                return nil
+            default:
+                break
+            }
+        }
+
+        // Always pass other Cmd and Ctrl combos through so the OS / App A can
+        // handle things like Cmd+Q, Cmd+Tab, Ctrl+C, etc.
         if flags.contains(.maskCommand) || flags.contains(.maskControl) {
             return Unmanaged.passRetained(event)
         }

@@ -60,75 +60,10 @@ struct PopupView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("CLIPHISTORY")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .kerning(2)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.primary.opacity(0.8), .primary.opacity(0.4)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Text(headerSubtitle)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Button { settings.hideImages.toggle() } label: {
-                        Image(systemName: settings.hideImages ? "photo.slash" : "photo")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(settings.hideImages ? Color.accentColor : Color.primary.opacity(0.4))
-                            .frame(width: 28, height: 28)
-                            .background(
-                                Circle()
-                                    .fill(settings.hideImages ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.03))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help(settings.hideImages ? "Show images" : "Hide images")
-
-                    Button { 
-                        let alert = NSAlert()
-                        alert.messageText = "Clear Clipboard History?"
-                        alert.informativeText = "This will permanently remove all stored items."
-                        alert.addButton(withTitle: "Clear All")
-                        alert.addButton(withTitle: "Cancel")
-                        alert.buttons[0].hasDestructiveAction = true
-                        
-                        if alert.runModal() == .alertFirstButtonReturn {
-                            store.clearAll()
-                        }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.red.opacity(0.4))
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(Color.red.opacity(0.03)))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Clear History")
-                }
-            }
-
-            searchField
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 18)
-        .padding(.bottom, 12)
-    }
-
-    private var headerSubtitle: String {
-        if filtered.isEmpty {
-            return store.items.isEmpty ? "Ready to capture" : "No results"
-        }
-        return "\(filtered.count) item\(filtered.count == 1 ? "" : "s")"
+        searchField
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
     }
 
     private var searchField: some View {
@@ -369,37 +304,35 @@ struct PopupView: View {
     // MARK: - Hints bar
 
     private var hintsBar: some View {
-        HStack(spacing: 10) {
-            hintChip(key: "↑↓", label: "navigate")
-            hintChip(key: "↵",  label: "paste")
-            hintChip(key: "⇧↵", label: "plain")
-            hintChip(key: "esc", label: "close")
-            Spacer()
-            if settings.hideImages {
-                HStack(spacing: 4) {
-                    Image(systemName: "photo.slash")
-                    Text("Images hidden")
-                }
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.accentColor.opacity(0.4))
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 12) {
+                hintChip(key: "↑↓", label: "navigate")
+                hintChip(key: "↵",  label: "paste")
+                hintChip(key: "⇧↵", label: "plain")
+                Spacer()
+            }
+            HStack(spacing: 12) {
+                hintChip(key: "⌘P", label: "pin")
+                hintChip(key: "⌘⌫", label: "delete")
+                hintChip(key: "esc", label: "close")
+                Spacer()
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .opacity(0.4) // Make the whole bar very subtle
+        .padding(.vertical, 10)
     }
 
     private func hintChip(key: String, label: String) -> some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Text(key)
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundStyle(.primary.opacity(0.3))
-                .padding(.horizontal, 3)
-                .padding(.vertical, 1)
-                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 3))
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(.primary.opacity(0.6))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 4))
             Text(label)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary.opacity(0.15))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.primary.opacity(0.5))
         }
     }
 
