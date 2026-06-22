@@ -7,12 +7,12 @@
 **A lightweight, native macOS clipboard manager.**  
 One hotkey. Instant popup. Text and images. No subscription.
 
-[![CI](https://github.com/weiykong/ClipHistory/actions/workflows/ci.yml/badge.svg)](https://github.com/weiykong/ClipHistory/actions/workflows/ci.yml)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)](https://github.com/weiykong/ClipHistory/releases/latest)
+[![CI](https://github.com/jmstach/ClipHistory/actions/workflows/ci.yml/badge.svg)](https://github.com/jmstach/ClipHistory/actions/workflows/ci.yml)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)](https://github.com/jmstach/ClipHistory)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)](https://swift.org)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**Download for Mac**](https://github.com/weiykong/ClipHistory/releases/latest/download/ClipHistory.dmg) · [Website](https://weiykong.github.io/ClipHistory) · [Releases](https://github.com/weiykong/ClipHistory/releases)
+[**Build from source**](#install) · [Repository](https://github.com/jmstach/ClipHistory)
 
 </div>
 
@@ -58,28 +58,22 @@ If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If yo
 
 ## Install
 
-### Download (recommended)
-
-1. [**Download ClipHistory.dmg**](https://github.com/weiykong/ClipHistory/releases/latest/download/ClipHistory.dmg)
-2. Open the DMG and drag **ClipHistory.app** to `/Applications`
-3. **Unlock the app (one-time)** — macOS blocks apps without an Apple certificate. Open Terminal and run:
-   ```bash
-   xattr -d com.apple.quarantine /Applications/ClipHistory.app
-   ```
-   Then double-click ClipHistory to open it normally.
-4. Grant **Accessibility** permission when the onboarding screen asks
-
-**Requires macOS 14 Sonoma or later.**
-
-### Build from source
+This fork has no prebuilt release — build it from source:
 
 ```bash
-git clone https://github.com/weiykong/ClipHistory.git
+git clone https://github.com/jmstach/ClipHistory.git
 cd ClipHistory
 bash scripts/build-dmg.sh   # → dist/ClipHistory.dmg
 ```
 
-Requires Xcode Command Line Tools: `xcode-select --install`
+Open `dist/ClipHistory.dmg`, drag **ClipHistory.app** to `/Applications`, and grant **Accessibility** permission when the onboarding screen asks — it's needed for the hotkey and the popup's keyboard navigation.
+
+Requires macOS 14 Sonoma or later, and Xcode Command Line Tools (`xcode-select --install`).
+
+> **Sharing the built app with someone else?** Because it isn't notarised, macOS quarantines it when copied to another Mac. They clear it once after dragging it to `/Applications`:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/ClipHistory.app
+> ```
 
 ---
 
