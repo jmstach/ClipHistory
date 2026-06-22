@@ -30,12 +30,13 @@ A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHi
 
 ## Why this fork?
 
-[Weiyuan Kong](https://github.com/weiykong) built a genuinely lovely clipboard manager — fast, native, encrypted, no telemetry. All the real work is theirs, and the **[original project](https://github.com/weiykong/ClipHistory)** has the full feature list, the architecture notes, and the design rationale. Go read it there; I haven't copied it here.
+[Weiyuan Kong](https://github.com/weiykong) built a genuinely lovely clipboard manager - fast, native, encrypted, no telemetry. All the real work is theirs, and the **[original project](https://github.com/weiykong/ClipHistory)** has the full feature list, the architecture notes, and the design rationale. Go read it there; I haven't copied it here.
 
-I'm a prissy little designer, so I rearranged the furniture to suit my taste:
+However, I'm a prissy little designer, so I rearranged the furniture to suit my taste:
 
 - **Paste keeps your formatting.** `↵` pastes with the original styling; `⇧↵` pastes as plain text.
-- **A quieter popup.** Lost the branding header and the toolbar buttons — it opens straight into search, and the keyboard hints at the bottom are actually legible now.
+- **A redesigned, quieter popup.** A Liquid Glass background, no branding header or toolbar buttons — it opens straight into search, with a cleaner type scale and legible keyboard hints.
+- **Open it where you want.** Centre, top, bottom, or at the cursor — set the popup's position in Settings.
 - **Keyboard-first pin and delete.** `⌘P` pins the selected item, `⌘⌫` deletes it, without reaching for the mouse.
 - **The shortcut recorder works.** Fixed a bug where you couldn't change the hotkey in Settings.
 

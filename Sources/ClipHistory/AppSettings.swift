@@ -3,6 +3,20 @@ import AppKit
 import Observation
 import ServiceManagement
 
+/// Where the popup appears when opened.
+enum PopupPlacement: String, CaseIterable, Codable {
+    case cursor, centre, topCentre, bottomCentre
+
+    var label: String {
+        switch self {
+        case .cursor:       return "At cursor"
+        case .centre:       return "Centre"
+        case .topCentre:    return "Top centre"
+        case .bottomCentre: return "Bottom centre"
+        }
+    }
+}
+
 @Observable
 final class AppSettings {
 
@@ -28,6 +42,11 @@ final class AppSettings {
         didSet { save() }
     }
 
+    /// Where the popup spawns when opened.
+    var popupPlacement: PopupPlacement = .centre {
+        didSet { save() }
+    }
+
     /// Bundle IDs of apps whose clipboard changes are silently ignored.
     var excludedBundleIDs: Set<String> = [] {
         didSet { save() }
@@ -49,6 +68,7 @@ final class AppSettings {
         static let maxItems          = "maxItems"
         static let hideImages        = "hideImages"
         static let excludedBundleIDs = "excludedBundleIDs"
+        static let popupPlacement    = "popupPlacement"
     }
 
     private func load() {
@@ -64,6 +84,10 @@ final class AppSettings {
         if let ids = d.stringArray(forKey: Keys.excludedBundleIDs) {
             excludedBundleIDs = Set(ids)
         }
+        if let raw = d.string(forKey: Keys.popupPlacement),
+           let placement = PopupPlacement(rawValue: raw) {
+            popupPlacement = placement
+        }
 
         // Read ground-truth from the OS — don't call SMAppService again if it
         // already matches (guard in didSet prevents the redundant call).
@@ -78,6 +102,7 @@ final class AppSettings {
         d.set(maxItems,              forKey: Keys.maxItems)
         d.set(hideImages,            forKey: Keys.hideImages)
         d.set(Array(excludedBundleIDs), forKey: Keys.excludedBundleIDs)
+        d.set(popupPlacement.rawValue, forKey: Keys.popupPlacement)
     }
 
     // MARK: - Launch at Login

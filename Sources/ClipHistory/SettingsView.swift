@@ -19,7 +19,6 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                settingsHeader
                 generalSection
                 shortcutSection
                 historySection
@@ -41,36 +40,10 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var settingsHeader: some View {
-        HStack(spacing: 16) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ClipHistory")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("Light. Private. Fast.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary.opacity(0.8))
-            }
-
-            Spacer()
-
-            HeaderMetric(value: "\(store.items.count)", label: "Items")
-        }
-        .padding(20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.panelRadius))
-    }
-
     // MARK: - Sections
 
     private var generalSection: some View {
-        SettingsSection(title: "General", subtitle: "Launch behavior") {
+        SettingsSection(title: "General") {
             SettingsRow(icon: "bolt.fill",
                         iconColor: .accentColor,
                         label: "Launch at Login",
@@ -79,22 +52,38 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
             }
+
+            Divider().padding(.horizontal, 16).opacity(0.5)
+
+            SettingsRow(icon: "macwindow.on.rectangle",
+                        iconColor: .teal,
+                        label: "Popup Position",
+                        hint: "Where the popup appears when you open it.") {
+                Picker("", selection: $settings.popupPlacement) {
+                    ForEach(PopupPlacement.allCases, id: \.self) { placement in
+                        Text(placement.label).tag(placement)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 160)
+            }
         }
     }
 
     private var shortcutSection: some View {
-        SettingsSection(title: "Shortcut", subtitle: "Global access") {
+        SettingsSection(title: "Shortcut") {
             VStack(alignment: .leading, spacing: 0) {
                 SettingsRow(icon: "keyboard.fill",
                             iconColor: .blue,
                             label: "Open Popup",
                             hint: "↵ pastes with formatting, ⇧↵ as plain text.") {
                     HotkeyRecorder(hotkey: $settings.hotkey)
-                        .frame(width: 162, height: 32)
+                        .frame(width: 160, height: 32)
                 }
 
                 Text("Click the field, then press your desired shortcut.")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary.opacity(0.5))
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
@@ -103,7 +92,7 @@ struct SettingsView: View {
     }
 
     private var historySection: some View {
-        SettingsSection(title: "History", subtitle: "Management") {
+        SettingsSection(title: "History") {
             VStack(spacing: 0) {
                 SettingsRow(icon: "tray.full.fill",
                             iconColor: .accentColor,
@@ -111,7 +100,7 @@ struct SettingsView: View {
                             hint: "Oldest unpinned clips are trimmed.") {
                     HStack(spacing: 12) {
                         Text("\(settings.maxItems)")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .font(.system(size: 14, weight: .bold))
                             .monospacedDigit()
                             .frame(minWidth: 34, alignment: .trailing)
                         Stepper("", value: $settings.maxItems, in: 5...500)
@@ -126,7 +115,7 @@ struct SettingsView: View {
                             label: "Capacity",
                             hint: "Current amount of stored clips.") {
                     Text("\(store.items.count) clips")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
 
@@ -141,9 +130,9 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Clear All Data")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .font(.system(size: 14, weight: .bold))
                         Text("This removes all clips permanently.")
-                            .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                            .font(.system(size: 11.5, weight: .medium))
                             .foregroundStyle(.secondary.opacity(0.6))
                     }
 
@@ -163,17 +152,17 @@ struct SettingsView: View {
     }
 
     private var privacySection: some View {
-        SettingsSection(title: "Privacy", subtitle: "Exclusions") {
+        SettingsSection(title: "Privacy") {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "lock.shield.fill")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.green)
-                        .frame(width: 28, height: 28)
-                        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        .frame(width: 32, height: 32)
+                        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
                     Text("Sensitive content and password managers are always ignored. You can manually exclude specific apps below.")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary.opacity(0.8))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -191,9 +180,9 @@ struct SettingsView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("No apps detected")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .font(.system(size: 14, weight: .bold))
                             Text("Apps appear here after they copy content.")
-                                .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                                .font(.system(size: 11.5, weight: .medium))
                                 .foregroundStyle(.secondary.opacity(0.4))
                         }
                         Spacer()
@@ -231,9 +220,9 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(app.name)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold))
                 Text(excluded ? "Excluded" : "Monitored")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(excluded ? Color.accentColor : Color.secondary.opacity(0.6))
             }
 
@@ -251,7 +240,7 @@ struct SettingsView: View {
             .controlSize(.small)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .contentShape(Rectangle())
     }
 
@@ -260,7 +249,7 @@ struct SettingsView: View {
             onReopenOnboarding?()
         } label: {
             Label("Restart Guide", systemImage: "arrow.clockwise")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.secondary.opacity(0.4))
         }
         .buttonStyle(.plain)
@@ -268,46 +257,18 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Header metric
-
-private struct HeaderMetric: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .monospacedDigit()
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .heavy))
-                .foregroundStyle(.secondary.opacity(0.4))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
 // MARK: - Reusable section container
 
 private struct SettingsSection<Content: View>: View {
-    let title:    String
-    let subtitle: String
+    let title: String
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary.opacity(0.9))
-                Spacer()
-                Text(subtitle)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary.opacity(0.4))
-            }
-            .padding(.horizontal, 4)
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.primary.opacity(0.9))
+                .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
                 content()
@@ -336,10 +297,10 @@ private struct SettingsRow<Trailing: View>: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold))
                 if let hint {
                     Text(hint)
-                        .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                        .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(.secondary.opacity(0.6))
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -38,9 +38,9 @@ struct OnboardingView: View {
                 .padding(.bottom, 4)
 
             Text("Set up ClipHistory")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 24, weight: .bold))
             Text("Three simple steps to clipboard mastery.")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary.opacity(0.7))
         }
         .padding(.horizontal, 24)
@@ -75,7 +75,7 @@ struct OnboardingView: View {
                         )
                     } label: {
                         Label("Grant", systemImage: "arrow.up.right.square")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.system(size: 12, weight: .bold))
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
@@ -118,7 +118,7 @@ struct OnboardingView: View {
             Text(axGranted
                  ? "You're all set! Enjoy your new clipboard power."
                  : "You can finish now and grant access later in Settings.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary.opacity(0.6))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -140,7 +140,7 @@ struct OnboardingView: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(text)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
         }
         .foregroundStyle(color)
         .padding(.horizontal, 8)
@@ -168,9 +168,9 @@ private struct SetupCard<Accessory: View>: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold))
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }

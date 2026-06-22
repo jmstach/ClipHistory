@@ -26,16 +26,26 @@ final class PopupWindowController {
         guard let panel else { return }
 
         let size = CGSize(width: 520, height: 420)
-        var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y + 14)
-
-        // Keep fully on-screen
+        // Anchor to whichever screen the cursor is on, so multi-display users get
+        // the popup where they're working regardless of placement mode.
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
-        if let sf = screen?.visibleFrame {
+        let sf = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+
+        var origin: NSPoint
+        switch settings.popupPlacement {
+        case .cursor:
+            origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y + 14)
             origin.x = max(sf.minX + 8, min(origin.x, sf.maxX - size.width - 8))
             if origin.y + size.height > sf.maxY - 8 {
                 origin.y = mouse.y - size.height - 14
             }
             origin.y = max(sf.minY + 8, origin.y)
+        case .centre:
+            origin = NSPoint(x: sf.midX - size.width / 2, y: sf.midY - size.height / 2)
+        case .topCentre:
+            origin = NSPoint(x: sf.midX - size.width / 2, y: sf.maxY - size.height - 60)
+        case .bottomCentre:
+            origin = NSPoint(x: sf.midX - size.width / 2, y: sf.minY + 60)
         }
 
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
