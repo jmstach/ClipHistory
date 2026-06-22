@@ -20,11 +20,9 @@ final class HotkeyRecorderNSView: NSView {
 
     override var acceptsFirstResponder: Bool { true }
 
-    override func becomeFirstResponder() -> Bool {
-        isRecording = true
-        return super.becomeFirstResponder()
-    }
-
+    // Recording must NOT start from becomeFirstResponder: AppKit makes this view
+    // the window's initial first responder on open, which would arm recording
+    // before any click and invert the mouseDown toggle below.
     override func resignFirstResponder() -> Bool {
         isRecording = false
         return super.resignFirstResponder()
@@ -33,8 +31,12 @@ final class HotkeyRecorderNSView: NSView {
     // MARK: - Interaction
 
     override func mouseDown(with event: NSEvent) {
-        if isRecording { window?.makeFirstResponder(nil) }
-        else            { window?.makeFirstResponder(self) }
+        if isRecording {
+            window?.makeFirstResponder(nil)
+        } else {
+            window?.makeFirstResponder(self)
+            isRecording = true
+        }
     }
 
     override func keyDown(with event: NSEvent) {
