@@ -7,12 +7,14 @@
 **A lightweight, native macOS clipboard manager.**  
 One hotkey. Instant popup. Text and images. No subscription.
 
+A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHistory) with a few opinionated tweaks.
+
 [![CI](https://github.com/jmstach/ClipHistory/actions/workflows/ci.yml/badge.svg)](https://github.com/jmstach/ClipHistory/actions/workflows/ci.yml)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)](https://github.com/jmstach/ClipHistory)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)](https://swift.org)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**Build from source**](#install) · [Repository](https://github.com/jmstach/ClipHistory)
+[**Build from source**](#install) · [This fork](https://github.com/jmstach/ClipHistory) · [Original project](https://github.com/weiykong/ClipHistory)
 
 </div>
 
@@ -26,33 +28,18 @@ One hotkey. Instant popup. Text and images. No subscription.
 
 ---
 
-## Why ClipHistory?
+## Why this fork?
 
-If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If you just want a fast, native, free clipboard history that handles text and images — this is it.
+[Weiyuan Kong](https://github.com/weiykong) built a genuinely lovely clipboard manager — fast, native, encrypted, no telemetry. All the real work is theirs, and the **[original project](https://github.com/weiykong/ClipHistory)** has the full feature list, the architecture notes, and the design rationale. Go read it there; I haven't copied it here.
 
-| | |
-|---|---|
-| ✅ Free & open source | ✅ Text & images |
-| ✅ Native Swift — ~1 MB | ✅ Pin favourites |
-| ✅ Search as you type | ✅ Per-app privacy exclusions |
-| ✅ Source app icons | ✅ Survives restarts |
-| ✅ Launch at Login | ✅ No subscription, no telemetry |
-| ✅ AES-256-GCM encrypted history | ✅ Sensitive data auto-skipped |
+I'm a prissy little designer, so I rearranged the furniture to suit my taste:
 
----
+- **Paste keeps your formatting.** `↵` pastes with the original styling; `⇧↵` pastes as plain text.
+- **A quieter popup.** Lost the branding header and the toolbar buttons — it opens straight into search, and the keyboard hints at the bottom are actually legible now.
+- **Keyboard-first pin and delete.** `⌘P` pins the selected item, `⌘⌫` deletes it, without reaching for the mouse.
+- **The shortcut recorder works.** Fixed a bug where you couldn't change the hotkey in Settings.
 
-## Features
-
-- **⚡ Instant popup** — press `⌥V` from any app, your clipboard history appears at the cursor
-- **🖼 Text & images** — captures plain text, screenshots, images from Finder, browsers, Preview
-- **🔍 Search** — just start typing to filter instantly; searches content and source app name
-- **🎨 Styled or plain paste** — `↵` pastes with the original formatting, `⇧↵` pastes as plain text
-- **📌 Pin favourites** — pinned items float to the top and are never evicted by newer copies
-- **🔐 Encrypted history** — disk storage is AES-256-GCM encrypted; the key lives in your Keychain, never on disk
-- **🔒 Sensitive data protection** — items marked by password managers (`org.nspasteboard.ConcealedType`) are automatically skipped before recording
-- **🚫 Per-app exclusions** — block any app from being recorded; changes from excluded apps are silently ignored
-- **🏷 Source app icons** — see at a glance which app each item came from
-- **🪶 Truly lightweight** — ~1 MB, pure SwiftUI, no background web process, no telemetry
+Everything underneath — capture, AES-256-GCM encryption, search, per-app exclusions, sensitive-data skipping — is the original's, unchanged.
 
 ---
 
@@ -93,58 +80,8 @@ Requires macOS 14 Sonoma or later, and Xcode Command Line Tools (`xcode-select -
 
 ---
 
-## Architecture
+## Credit & license
 
-Zero dependencies. Swift Package Manager executable target.
-
-```
-Sources/ClipHistory/
-├── main.swift                  # NSApplication entry point
-├── AppDelegate.swift           # Menu bar, hotkey, clipboard polling timer
-├── AppSettings.swift           # @Observable settings + UserDefaults persistence
-├── ClipboardStore.swift        # Item store, polling, AES-256-GCM encryption, PNG thumbnailing
-├── PopupWindowController.swift # NSPanel + CGEventTap keyboard intercept
-├── PopupView.swift             # SwiftUI popup UI
-├── PopupState.swift            # Shared search / selection state
-├── SettingsView.swift          # SwiftUI settings window
-├── OnboardingView.swift        # First-launch setup guide
-├── HotkeyShortcut.swift        # Hotkey model + Carbon registration
-├── HotkeyRecorderView.swift    # NSViewRepresentable hotkey recorder
-└── MenuBarIcon.swift           # Programmatic SF Symbol menu bar icon
-```
-
-<details>
-<summary><strong>Key design decisions</strong></summary>
-
-**`NSPanel` with `.nonactivatingPanel`**  
-The popup becomes the key window (so SwiftUI buttons receive clicks) without ever activating the app. The previously focused app keeps its text cursor throughout — Cmd+V fires straight into it after paste.
-
-**Session-level `CGEventTap`**  
-Keyboard events are intercepted at the OS session level while the popup is visible, routing them to search and navigation without stealing focus from the source app.
-
-**`@Observable` + `@Bindable`**  
-Modern Swift observation macros throughout — no `@StateObject` or `@ObservedObject`.
-
-**AES-256-GCM encrypted storage**  
-History is saved as `history.json.enc` — a single AES-GCM sealed box. A 256-bit key is generated on first launch and stored in the Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Saves are debounced (1 s) so clipboard bursts produce a single write.
-
-**Sensitive data protection**  
-Before recording any clipboard event, the store checks for `org.nspasteboard.ConcealedType` — the standard pasteboard type that 1Password and other credential managers set. Items carrying it are silently dropped.
-
-**Image thumbnailing**  
-Clipboard images (screenshots, browser copies, Finder files) are downscaled to ≤ 480 px PNG at capture time using `NSImage(size:flipped:drawingHandler:)`, which forces lazy clipboard images that report `size=(0,0)` to render before sampling. Decoded `NSImage` instances are cached in `NSCache` keyed by item UUID to avoid re-inflating PNG bytes on every render pass.
-
-</details>
-
----
-
-## Contributing
-
-Issues and pull requests are welcome.  
-Please **open an issue first** before starting any large change so we can discuss the approach.
-
----
-
-## License
+ClipHistory is the work of **[Weiyuan Kong](https://github.com/weiykong)** — this fork only changes a handful of interactions. For everything else, including how it actually works, see the [original repository](https://github.com/weiykong/ClipHistory).
 
 [MIT](LICENSE) © 2026 Weiyuan Kong
