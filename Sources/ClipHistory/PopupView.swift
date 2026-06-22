@@ -37,12 +37,8 @@ struct PopupView: View {
                 }
             hintsBar
         }
-        .background {
-            RoundedRectangle(cornerRadius: AppTheme.panelRadius)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.12), radius: 32, y: 16)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.panelRadius))
+        .background { panelBackground }
+        .clipShape(panelShape)
         .onChange(of: state.searchText) { _, _ in state.selectedIndex = 0 }
         .onChange(of: state.showToken) { _, _ in
             searchFocused = false
@@ -57,6 +53,26 @@ struct PopupView: View {
         hoverEnabled = false
     }
 
+    // MARK: - Panel background
+
+    private var panelShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: AppTheme.panelRadius)
+    }
+
+    @ViewBuilder
+    private var panelBackground: some View {
+        if #available(macOS 26.0, *) {
+            // Liquid Glass: translucent, refractive, adapts to whatever's behind.
+            // The drop shadow is the window's (hasShadow), not a SwiftUI layer —
+            // a SwiftUI shadow here would be clipped by .clipShape and the window edge.
+            Color.clear
+                .glassEffect(.regular, in: panelShape)
+        } else {
+            panelShape
+                .fill(.ultraThinMaterial)
+        }
+    }
+
     // MARK: - Header
 
     private var header: some View {
@@ -69,21 +85,21 @@ struct PopupView: View {
     private var searchField: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(searchFocused ? Color.accentColor : Color.primary.opacity(0.3))
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(searchFocused ? Color.accentColor : Color.primary.opacity(0.45))
                 .scaleEffect(searchFocused ? 1.1 : 1.0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: searchFocused)
 
             ZStack(alignment: .leading) {
                 if state.searchText.isEmpty {
                     Text("Search history...")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.primary.opacity(0.25))
+                        .font(AppTheme.searchText)
+                        .foregroundStyle(.primary.opacity(0.4))
                 }
 
                 HStack(spacing: 1) {
                     Text(state.searchText.isEmpty ? "" : state.searchText)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(AppTheme.searchText)
                         .foregroundStyle(.primary.opacity(0.9))
 
                     Rectangle()
@@ -103,7 +119,7 @@ struct PopupView: View {
             if !state.searchText.isEmpty {
                 Button { state.searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
+                        .font(.system(size: 17))
                         .foregroundStyle(.primary.opacity(0.2))
                 }
                 .buttonStyle(.plain)
@@ -151,16 +167,16 @@ struct PopupView: View {
                     .fill(AppTheme.softFill)
                     .frame(width: 44, height: 44)
                 Image(systemName: store.items.isEmpty ? "clipboard" : "magnifyingglass")
-                    .font(.system(size: 19, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
             VStack(spacing: 4) {
                 Text(store.items.isEmpty ? "Nothing copied yet" : "No matches")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppTheme.emptyTitle)
                     .foregroundStyle(.primary.opacity(0.82))
                 Text(store.items.isEmpty ? "Your recent clips will appear here." : "Try a different search or show images.")
-                    .font(.system(size: 11.5))
+                    .font(AppTheme.emptySubtitle)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
             }
@@ -211,7 +227,7 @@ struct PopupView: View {
                     .frame(width: 28, height: 28)
                     .overlay {
                         Image(systemName: item.isImage ? "photo" : "doc.text")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(selected ? Color.accentColor : Color.primary.opacity(0.4))
                     }
             }
@@ -225,15 +241,17 @@ struct PopupView: View {
         case .text(let text):
             VStack(alignment: .leading, spacing: 2) {
                 Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(AppTheme.rowTitle)
                     .lineLimit(2)
                     .truncationMode(.tail)
                     .foregroundStyle(.primary.opacity(selected ? 1 : 0.85))
 
                 if let app = item.sourceApp {
                     Text(app.name)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(0.5))
+                        .font(AppTheme.sourceLabel)
+                        .textCase(.uppercase)
+                        .kerning(1.2)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -254,12 +272,14 @@ struct PopupView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Image")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(AppTheme.imageTitle)
                         .foregroundStyle(.primary.opacity(0.9))
                     if let app = item.sourceApp {
                         Text(app.name)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.secondary.opacity(0.5))
+                            .font(AppTheme.sourceLabel)
+                            .textCase(.uppercase)
+                            .kerning(1.2)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -267,56 +287,45 @@ struct PopupView: View {
     }
 
     private func trailingMeta(for item: ClipItem, selected: Bool) -> some View {
-        VStack(alignment: .trailing, spacing: 6) {
+        HStack(spacing: 8) {
             if item.pinned || selected {
-                HStack(spacing: 4) {
-                    Button {
-                        store.remove(id: item.id)
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 9.5, weight: .bold))
-                            .foregroundStyle(.red.opacity(0.4))
-                            .frame(width: 20, height: 20)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        store.togglePin(id: item.id)
-                    } label: {
-                        Image(systemName: item.pinned ? "pin.fill" : "pin")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(item.pinned ? Color.accentColor : Color.primary.opacity(0.2))
-                            .frame(width: 20, height: 20)
-                    }
-                    .buttonStyle(.plain)
+                circleButton(systemName: "trash", on: false) { store.remove(id: item.id) }
+                circleButton(systemName: item.pinned ? "pin.fill" : "pin", on: item.pinned) {
+                    store.togglePin(id: item.id)
                 }
-                .transition(.scale.combined(with: .opacity))
             }
 
             Text(shortAge(item.date))
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary.opacity(0.2))
+                .font(AppTheme.timestamp)
+                .foregroundStyle(.primary.opacity(0.3))
         }
-        .frame(width: 44, alignment: .trailing)
         .animation(.spring(response: 0.2, dampingFraction: 0.6), value: selected)
+    }
+
+    // Filled circle button: accent fill when "on", neutral grey when off.
+    private func circleButton(systemName: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(on ? Color.white : Color.primary.opacity(0.55))
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(on ? Color.accentColor : Color.primary.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
+        .transition(.scale.combined(with: .opacity))
     }
 
     // MARK: - Hints bar
 
     private var hintsBar: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 12) {
-                hintChip(key: "↑↓", label: "navigate")
-                hintChip(key: "↵",  label: "paste")
-                hintChip(key: "⇧↵", label: "plain")
-                Spacer()
-            }
-            HStack(spacing: 12) {
-                hintChip(key: "⌘P", label: "pin")
-                hintChip(key: "⌘⌫", label: "delete")
-                hintChip(key: "esc", label: "close")
-                Spacer()
-            }
+        HStack(spacing: 14) {
+            hintChip(key: "↑↓", label: "navigate")
+            hintChip(key: "↵",  label: "paste")
+            hintChip(key: "⇧↵", label: "plain")
+            hintChip(key: "⌘P", label: "pin")
+            hintChip(key: "⌘⌫", label: "delete")
+            hintChip(key: "esc", label: "close")
+            Spacer()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -325,13 +334,13 @@ struct PopupView: View {
     private func hintChip(key: String, label: String) -> some View {
         HStack(spacing: 4) {
             Text(key)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(AppTheme.hintKey)
                 .foregroundStyle(.primary.opacity(0.6))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 4))
             Text(label)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(AppTheme.hintLabel)
                 .foregroundStyle(.primary.opacity(0.5))
         }
     }

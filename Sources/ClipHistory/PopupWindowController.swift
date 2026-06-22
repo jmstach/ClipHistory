@@ -25,7 +25,7 @@ final class PopupWindowController {
         if panel == nil { buildPanel() }
         guard let panel else { return }
 
-        let size = CGSize(width: 360, height: 420)
+        let size = CGSize(width: 520, height: 420)
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y + 14)
 
         // Keep fully on-screen
@@ -138,7 +138,7 @@ final class PopupWindowController {
         p.hidesOnDeactivate  = false
         p.backgroundColor    = .clear
         p.isOpaque           = false
-        p.hasShadow          = false  // Shadow drawn via SwiftUI .shadow() modifier so it follows the rounded shape
+        p.hasShadow          = true   // System draws a shadow around the rounded glass content, outside the window frame
 
         p.contentView = NSHostingView(rootView: PopupView(
             store:     store,
