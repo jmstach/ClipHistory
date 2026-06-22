@@ -45,12 +45,12 @@ If you want 200 features, use Raycast. If you want iCloud sync, use Paste. If yo
 
 - **⚡ Instant popup** — press `⌥V` from any app, your clipboard history appears at the cursor
 - **🖼 Text & images** — captures plain text, screenshots, images from Finder, browsers, Preview
-- **🔍 Search** — type to filter instantly; searches content and source app name
+- **🔍 Search** — just start typing to filter instantly; searches content and source app name
+- **🎨 Styled or plain paste** — `↵` pastes with the original formatting, `⇧↵` pastes as plain text
 - **📌 Pin favourites** — pinned items float to the top and are never evicted by newer copies
 - **🔐 Encrypted history** — disk storage is AES-256-GCM encrypted; the key lives in your Keychain, never on disk
 - **🔒 Sensitive data protection** — items marked by password managers (`org.nspasteboard.ConcealedType`) are automatically skipped before recording
 - **🚫 Per-app exclusions** — block any app from being recorded; changes from excluded apps are silently ignored
-- **👁 Hide images toggle** — one click in the popup header to go text-only
 - **🏷 Source app icons** — see at a glance which app each item came from
 - **🪶 Truly lightweight** — ~1 MB, pure SwiftUI, no background web process, no telemetry
 
@@ -89,10 +89,11 @@ Requires Xcode Command Line Tools: `xcode-select --install`
 |---|---|
 | Open popup | `⌥V` *(customisable in Settings)* |
 | Navigate | `↑` / `↓` |
-| Paste selected | `↵` |
-| Search | Click the search bar, then type |
-| Pin / unpin item | Click the `pin` icon on the row |
-| Hide images | `photo` toggle in the popup header |
+| Paste (with formatting) | `↵` |
+| Paste as plain text | `⇧↵` |
+| Search | Just start typing |
+| Pin / unpin item | `⌘P` *(or click the pin icon on the row)* |
+| Delete item | `⌘⌫` *(or click the trash icon on the row)* |
 | Close | `Esc` or click outside |
 | Settings | Menu bar icon → **Settings…** |
 
