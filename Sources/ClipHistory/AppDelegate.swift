@@ -49,8 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Wire setting-change callbacks
         settings.onHotkeyChanged   = { [weak self] _ in self?.reRegisterHotkey() }
         settings.onMaxItemsChanged = { [weak self] n  in self?.store.updateMaxCount(n) }
+        settings.onMenuBarVisibilityChanged = { [weak self] _ in self?.applyMenuBarVisibility() }
 
-        setupMenuBar()
+        // Settings is reachable from the in-popup gear, so the app stays usable
+        // even with the menu bar icon hidden.
+        popup.openSettings = { [weak self] in self?.openSettings() }
+
+        applyMenuBarVisibility()
         startFrontmostAppTracking()
         startClipboardMonitoring()
         requestAccessibilityAndRegisterHotkey()
@@ -66,6 +71,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // MARK: - Menu bar
+
+    /// Create or remove the status item to match the current setting.
+    private func applyMenuBarVisibility() {
+        if settings.hideMenuBarIcon {
+            if let item = statusItem {
+                NSStatusBar.system.removeStatusItem(item)
+                statusItem = nil
+            }
+        } else if statusItem == nil {
+            setupMenuBar()
+        }
+    }
 
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -162,9 +179,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func dismissOnboarding() {
-        UserDefaults.standard.set(true, forKey: Self.onboardingDoneKey)
-        onboardingWindow?.close()
+        // Re-entry guard: close() fires windowWillClose synchronously, which calls
+        // back here through the delegate. Drop the delegate and nil the reference
+        // first so the second entry is a no-op instead of recursing into a stack
+        // overflow (NSWindow._finishClosingWindow).
+        guard let win = onboardingWindow else { return }
         onboardingWindow = nil
+        win.delegate = nil
+
+        UserDefaults.standard.set(true, forKey: Self.onboardingDoneKey)
+        // Always finish setup with the menu bar icon visible, so there's a
+        // discoverable entry point; the user can hide it later in Settings.
+        settings.hideMenuBarIcon = false
+        win.close()
     }
 
     // MARK: - Source-app tracking

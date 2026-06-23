@@ -5,7 +5,7 @@ import ServiceManagement
 
 /// Where the popup appears when opened.
 enum PopupPlacement: String, CaseIterable, Codable {
-    case cursor, centre, topCentre, bottomCentre
+    case cursor, centre, topCentre, bottomCentre, bottomTray
 
     var label: String {
         switch self {
@@ -13,6 +13,7 @@ enum PopupPlacement: String, CaseIterable, Codable {
         case .centre:       return "Centre"
         case .topCentre:    return "Top centre"
         case .bottomCentre: return "Bottom centre"
+        case .bottomTray:   return "Bottom tray"
         }
     }
 }
@@ -43,8 +44,20 @@ final class AppSettings {
     }
 
     /// Where the popup spawns when opened.
-    var popupPlacement: PopupPlacement = .centre {
+    var popupPlacement: PopupPlacement = .bottomTray {
         didSet { save() }
+    }
+
+    /// Hide the menu bar status item. Settings is still reachable via the gear
+    /// button in the popup, so the app stays controllable without the icon.
+    /// Defaults to visible — onboarding also forces it on so new users always
+    /// have a discoverable entry point; hiding is an explicit opt-in.
+    var hideMenuBarIcon: Bool = false {
+        didSet {
+            guard hideMenuBarIcon != oldValue else { return }
+            save()
+            onMenuBarVisibilityChanged?(hideMenuBarIcon)
+        }
     }
 
     /// Bundle IDs of apps whose clipboard changes are silently ignored.
@@ -56,6 +69,7 @@ final class AppSettings {
 
     var onHotkeyChanged:   ((HotkeyShortcut) -> Void)?
     var onMaxItemsChanged: ((Int) -> Void)?
+    var onMenuBarVisibilityChanged: ((Bool) -> Void)?
 
     // MARK: - Init
 
@@ -69,6 +83,7 @@ final class AppSettings {
         static let hideImages        = "hideImages"
         static let excludedBundleIDs = "excludedBundleIDs"
         static let popupPlacement    = "popupPlacement"
+        static let hideMenuBarIcon   = "hideMenuBarIcon"
     }
 
     private func load() {
@@ -88,6 +103,11 @@ final class AppSettings {
            let placement = PopupPlacement(rawValue: raw) {
             popupPlacement = placement
         }
+        // Only override the default if a value was actually stored (bool returns
+        // false for an absent key, which would mask the hidden-by-default).
+        if d.object(forKey: Keys.hideMenuBarIcon) != nil {
+            hideMenuBarIcon = d.bool(forKey: Keys.hideMenuBarIcon)
+        }
 
         // Read ground-truth from the OS — don't call SMAppService again if it
         // already matches (guard in didSet prevents the redundant call).
@@ -103,6 +123,7 @@ final class AppSettings {
         d.set(hideImages,            forKey: Keys.hideImages)
         d.set(Array(excludedBundleIDs), forKey: Keys.excludedBundleIDs)
         d.set(popupPlacement.rawValue, forKey: Keys.popupPlacement)
+        d.set(hideMenuBarIcon,         forKey: Keys.hideMenuBarIcon)
     }
 
     // MARK: - Launch at Login

@@ -2,6 +2,7 @@ import AppKit
 import CryptoKit
 import Observation
 import Security
+import SwiftUI
 
 // MARK: - Source app
 
@@ -27,10 +28,14 @@ struct SourceApp: Codable, Equatable {
 enum ClipContent: Equatable {
     case text(String)
     case image(Data)    // PNG thumbnail (≤ 480 px on longest side)
+    /// File(s) copied from Finder. `urls` are written back verbatim on paste so the
+    /// real files drop into the target; `thumbnail` is an optional PNG preview for
+    /// image files (best of both worlds — paste the file, show the picture).
+    case files(urls: [URL], thumbnail: Data?)
 }
 
 extension ClipContent: Codable {
-    private enum CK: String, CodingKey { case type, text, imageData }
+    private enum CK: String, CodingKey { case type, text, imageData, filePaths }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CK.self)
@@ -41,6 +46,10 @@ extension ClipContent: Codable {
         case .image(let d):
             try c.encode("image", forKey: .type)
             try c.encode(d,       forKey: .imageData)
+        case .files(let urls, let thumb):
+            try c.encode("files", forKey: .type)
+            try c.encode(urls.map { $0.path }, forKey: .filePaths)
+            try c.encodeIfPresent(thumb, forKey: .imageData)
         }
     }
 
@@ -49,6 +58,10 @@ extension ClipContent: Codable {
         switch try c.decode(String.self, forKey: .type) {
         case "text":  self = .text(try c.decode(String.self, forKey: .text))
         case "image": self = .image(try c.decode(Data.self, forKey: .imageData))
+        case "files":
+            let paths = try c.decode([String].self, forKey: .filePaths)
+            let thumb = try? c.decode(Data.self, forKey: .imageData)
+            self = .files(urls: paths.map { URL(fileURLWithPath: $0) }, thumbnail: thumb)
         default:      throw DecodingError.dataCorruptedError(forKey: .type, in: c,
                           debugDescription: "Unknown ClipContent type")
         }
@@ -80,8 +93,11 @@ struct ClipItem: Identifiable, Equatable {
 
     var preview: String {
         switch content {
-        case .text(let t): return t.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .image:       return "Image"
+        case .text(let t):  return t.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .image:        return "Image"
+        case .files(let urls, _):
+            if urls.count == 1 { return urls[0].lastPathComponent }
+            return "\(urls.count) files"
         }
     }
 
@@ -93,6 +109,16 @@ struct ClipItem: Identifiable, Equatable {
     var isImage: Bool {
         if case .image = content { return true }
         return false
+    }
+
+    var fileURLs: [URL]? {
+        if case .files(let urls, _) = content { return urls }
+        return nil
+    }
+
+    var fileThumbnail: Data? {
+        if case .files(_, let thumb) = content { return thumb }
+        return nil
     }
 }
 
@@ -140,6 +166,9 @@ final class ClipboardStore {
     // Decoded-image cache — avoids re-inflating PNG bytes on every render pass.
     // Keyed by item UUID so entries are automatically orphaned when items are evicted.
     private let imageCache = NSCache<NSUUID, NSImage>()
+    // AttributedString is a value type; box it so NSCache (which needs a class) can hold it.
+    private final class StyledBox { let value: AttributedString; init(_ v: AttributedString) { value = v } }
+    private let styledCache = NSCache<NSUUID, StyledBox>()
 
     private let saveURL: URL = {
         let dir = FileManager.default
@@ -168,10 +197,67 @@ final class ClipboardStore {
     func cachedImage(for item: ClipItem) -> NSImage? {
         let key = item.id as NSUUID
         if let hit = imageCache.object(forKey: key) { return hit }
-        guard case .image(let data) = item.content,
-              let img = NSImage(data: data) else { return nil }
+        // Serve raw image clips and image-file thumbnails from the same cache.
+        let data: Data?
+        switch item.content {
+        case .image(let d):        data = d
+        case .files(_, let thumb): data = thumb
+        case .text:                data = nil
+        }
+        guard let data, let img = NSImage(data: data) else { return nil }
         imageCache.setObject(img, forKey: key)
         return img
+    }
+
+    // MARK: - Styled-text preview cache
+    //
+    // For text items captured with RTF, build a placement-agnostic rich preview:
+    // express the source's bold / italic / mono as InlinePresentationIntent and keep
+    // foreground colour, but carry NO font — so whatever `.font` the popup (tray card
+    // or vertical row) applies still governs the size. Parsed once per item, cached.
+
+    func styledPreview(for item: ClipItem) -> AttributedString? {
+        guard let rtf = item.rtf else { return nil }
+        let key = item.id as NSUUID
+        if let hit = styledCache.object(forKey: key) { return hit.value }
+        guard let parsed = try? NSAttributedString(
+            data: rtf,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        ) else { return nil }
+        let built = Self.buildStyledPreview(parsed)
+        styledCache.setObject(StyledBox(built), forKey: key)
+        return built
+    }
+
+    private static func buildStyledPreview(_ input: NSAttributedString) -> AttributedString {
+        // Trim leading/trailing whitespace to match the plain-text path. Whitespace
+        // characters are single UTF-16 units, so counts map straight to an NSRange.
+        let s = input.string
+        let lead  = s.prefix(while: { $0.isWhitespace }).count
+        let trail = s.reversed().prefix(while: { $0.isWhitespace }).count
+        let len   = (s as NSString).length
+        guard len - lead - trail > 0 else { return AttributedString() }
+        let core  = input.attributedSubstring(
+            from: NSRange(location: lead, length: len - lead - trail))
+
+        var result = AttributedString()
+        core.enumerateAttributes(in: NSRange(location: 0, length: core.length)) { attrs, range, _ in
+            var piece = AttributedString((core.string as NSString).substring(with: range))
+
+            let traits = (attrs[.font] as? NSFont)?.fontDescriptor.symbolicTraits ?? []
+            var intent: InlinePresentationIntent = []
+            if traits.contains(.bold)      { intent.insert(.stronglyEmphasized) }
+            if traits.contains(.italic)    { intent.insert(.emphasized) }
+            if traits.contains(.monoSpace) { intent.insert(.code) }
+            if !intent.isEmpty { piece.inlinePresentationIntent = intent }
+
+            if let ns = attrs[.foregroundColor] as? NSColor {
+                piece.foregroundColor = Color(nsColor: ns)
+            }
+            result.append(piece)
+        }
+        return result
     }
 
     // MARK: - Public API
@@ -193,12 +279,16 @@ final class ClipboardStore {
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
         ) as? [URL], !urls.isEmpty {
-            for url in urls where imageExts.contains(url.pathExtension.lowercased()) {
-                if let img = NSImage(contentsOf: url), let thumb = img.pngThumbnail() {
-                    add(ClipItem(content: .image(thumb), sourceApp: source))
-                    return
-                }
-            }
+            // The pasteboard's changeCount can tick without the file selection
+            // changing (Handoff / Universal Clipboard re-syncs, apps re-asserting
+            // the pasteboard), so skip if these exact files are already the most
+            // recent clip — mirrors the text path's dedup.
+            if items.first?.fileURLs == urls { return }
+            // Keep the files so paste drops the real items; if any is an image,
+            // thumbnail the first one for the preview.
+            let thumb = urls.first(where: { imageExts.contains($0.pathExtension.lowercased()) })
+                .flatMap { NSImage(contentsOf: $0)?.pngThumbnail() }
+            add(ClipItem(content: .files(urls: urls, thumbnail: thumb), sourceApp: source))
             return
         }
 
@@ -231,6 +321,7 @@ final class ClipboardStore {
     func clearAll() {
         items = []
         imageCache.removeAllObjects()
+        styledCache.removeAllObjects()
         flushSave()
     }
 
@@ -252,6 +343,7 @@ final class ClipboardStore {
         if let idx = items.firstIndex(where: { $0.id == id }) {
             items.remove(at: idx)
             imageCache.removeObject(forKey: id as NSUUID)
+            styledCache.removeObject(forKey: id as NSUUID)
             scheduleSave()
         }
     }
@@ -284,6 +376,7 @@ final class ClipboardStore {
         let kept = Set((trimmedPinned + trimmedUnpinned).map { $0.id })
         for item in items where !kept.contains(item.id) {
             imageCache.removeObject(forKey: item.id as NSUUID)
+            styledCache.removeObject(forKey: item.id as NSUUID)
         }
         items = trimmedPinned + trimmedUnpinned
     }
@@ -343,6 +436,9 @@ final class ClipboardStore {
 
     // MARK: - Keychain key management
 
+    // Opaque key for the Keychain item — deliberately NOT the bundle ID. It keeps
+    // the original value so the encryption key (and thus existing history) survives
+    // the rename to uk.stach.cliphistory; changing it would orphan the key.
     private static let keychainService = "com.weiyuankong.cliphistory"
     private static let keychainAccount = "history-encryption-key"
 

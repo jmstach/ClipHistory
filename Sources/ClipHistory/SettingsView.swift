@@ -68,6 +68,17 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 160)
             }
+
+            Divider().padding(.horizontal, 16).opacity(0.5)
+
+            SettingsRow(icon: "menubar.rectangle",
+                        iconColor: .indigo,
+                        label: "Hide Menu Bar Icon",
+                        hint: "Open Settings with the gear button in the popup.") {
+                Toggle("", isOn: $settings.hideMenuBarIcon)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
         }
     }
 
@@ -245,14 +256,26 @@ struct SettingsView: View {
     }
 
     private var footerLink: some View {
-        Button {
-            onReopenOnboarding?()
-        } label: {
-            Label("Restart Guide", systemImage: "arrow.clockwise")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.secondary.opacity(0.4))
+        HStack(spacing: 16) {
+            Button {
+                onReopenOnboarding?()
+            } label: {
+                Label("Restart Guide", systemImage: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Label("Quit ClipHistory", systemImage: "power")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("q", modifiers: .command)
         }
-        .buttonStyle(.plain)
         .padding(.vertical, 8)
     }
 }

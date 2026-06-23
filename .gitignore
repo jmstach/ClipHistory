@@ -21,3 +21,6 @@ dist/AppIcon.iconset/
 dist/AppIcon.icns
 .claude/
 docs/linkedin-mockup.html
+
+# Local-only planning scratch file (references signing identity, not for upstream)
+TODO.md

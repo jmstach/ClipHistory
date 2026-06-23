@@ -12,6 +12,9 @@ final class PopupWindowController {
     private var eventTap:     CFMachPort?
     private var tapSource:    CFRunLoopSource?
 
+    /// Invoked when the user taps the in-popup settings gear. Set by AppDelegate.
+    var openSettings: (() -> Void)?
+
     init(store: ClipboardStore, settings: AppSettings) {
         self.store    = store
         self.settings = settings
@@ -25,14 +28,22 @@ final class PopupWindowController {
         if panel == nil { buildPanel() }
         guard let panel else { return }
 
-        let size = CGSize(width: 520, height: 420)
         // Anchor to whichever screen the cursor is on, so multi-display users get
         // the popup where they're working regardless of placement mode.
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
         let sf = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
 
+        // Bottom tray spans the screen width (inset on both sides + bottom) and is
+        // shorter; every other placement keeps the standard vertical popup size.
+        let trayInset: CGFloat = 12
+        let size: CGSize = settings.popupPlacement == .bottomTray
+            ? CGSize(width: sf.width - trayInset * 2, height: 266)
+            : CGSize(width: 520, height: 420)
+
         var origin: NSPoint
         switch settings.popupPlacement {
+        case .bottomTray:
+            origin = NSPoint(x: sf.minX + trayInset, y: sf.minY + trayInset)
         case .cursor:
             origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y + 14)
             origin.x = max(sf.minX + 8, min(origin.x, sf.maxX - size.width - 8))
@@ -87,6 +98,9 @@ final class PopupWindowController {
             pb.setString(text, forType: .string)
         case .image(let data):
             if let img = NSImage(data: data) { pb.writeObjects([img]) }
+        case .files(let urls, _):
+            // Write the file URLs back verbatim; Cmd+V then drops the real files.
+            pb.writeObjects(urls as [NSURL])
         }
 
         hide()
@@ -110,6 +124,17 @@ final class PopupWindowController {
         let items = filteredItems
         guard items.indices.contains(popupState.selectedIndex) else { return }
         pasteItem(items[popupState.selectedIndex], plain: plain)
+    }
+
+    /// Move selection towards newer items (top of the list / left of the tray).
+    private func selectNewer() {
+        popupState.selectedIndex = max(0, popupState.selectedIndex - 1)
+    }
+
+    /// Move selection towards older items (bottom of the list / right of the tray).
+    private func selectOlder() {
+        let count = filteredItems.count
+        popupState.selectedIndex = min(max(count - 1, 0), popupState.selectedIndex + 1)
     }
 
     private func togglePinCurrent() {
@@ -155,7 +180,11 @@ final class PopupWindowController {
             settings:  settings,
             state:     popupState,
             onSelect:  { [weak self] item in self?.pasteItem(item) },
-            onDismiss: { [weak self] in self?.hide() }
+            onDismiss: { [weak self] in self?.hide() },
+            onOpenSettings: { [weak self] in
+                self?.hide()
+                self?.openSettings?()
+            }
         ))
         panel = p
     }
@@ -246,20 +275,12 @@ final class PopupWindowController {
             DispatchQueue.main.async { [weak self] in self?.hide() }
             return nil
 
-        case 126:                       // ↑ Up arrow
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.popupState.selectedIndex = max(0, self.popupState.selectedIndex - 1)
-            }
+        case 126:                       // ↑ Up arrow → newer
+            DispatchQueue.main.async { [weak self] in self?.selectNewer() }
             return nil
 
-        case 125:                       // ↓ Down arrow
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                let count = self.filteredItems.count
-                self.popupState.selectedIndex = min(max(count - 1, 0),
-                                                    self.popupState.selectedIndex + 1)
-            }
+        case 125:                       // ↓ Down arrow → older
+            DispatchQueue.main.async { [weak self] in self?.selectOlder() }
             return nil
 
         case 36, 76:                    // Return / numpad Enter
@@ -278,7 +299,16 @@ final class PopupWindowController {
             }
             return nil
 
-        case 123, 124:                  // ← → arrows — no meaning in popup, consume
+        case 123:                       // ← Left arrow → newer (tray only)
+            if settings.popupPlacement == .bottomTray {
+                DispatchQueue.main.async { [weak self] in self?.selectNewer() }
+            }
+            return nil                  // consumed in every mode
+
+        case 124:                       // → Right arrow → older (tray only)
+            if settings.popupPlacement == .bottomTray {
+                DispatchQueue.main.async { [weak self] in self?.selectOlder() }
+            }
             return nil
 
         default:

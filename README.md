@@ -5,7 +5,7 @@
 # ClipHistory
 
 **A lightweight, native macOS clipboard manager.**  
-One hotkey. Instant popup. Text and images. No subscription.
+One hotkey. Instant popup. Text, images, and files. No subscription.
 
 A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHistory) with a few opinionated tweaks.
 
@@ -34,10 +34,13 @@ A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHi
 
 However, I'm a prissy little designer, so I rearranged the furniture to suit my taste:
 
-- **Paste keeps your formatting.** `↵` pastes with the original styling; `⇧↵` pastes as plain text.
+- **A bottom-tray mode.** A full-width tray that rises from the bottom of the screen, showing clips as large horizontal preview cards you scan with `←`/`→`. It's the default now; the classic centred popup is still a setting away.
+- **Files, not just text and images.** Copy files in Finder and they land in your history — paste drops the real files back, with a thumbnail preview for images.
+- **Paste keeps your formatting.** `↵` pastes with the original styling; `⇧↵` pastes as plain text. Styled clips also preview with their real bold, italics, and colour.
 - **A redesigned, quieter popup.** A Liquid Glass background, no branding header or toolbar buttons — it opens straight into search, with a cleaner type scale and legible keyboard hints.
-- **Open it where you want.** Centre, top, bottom, or at the cursor — set the popup's position in Settings.
+- **Open it where you want.** Bottom tray, centre, top, bottom, or at the cursor — set the popup's position in Settings.
 - **Keyboard-first pin and delete.** `⌘P` pins the selected item, `⌘⌫` deletes it, without reaching for the mouse.
+- **A quieter menu bar.** Hide the menu bar icon entirely and reach Settings from the gear button in the popup.
 - **The shortcut recorder works.** Fixed a bug where you couldn't change the hotkey in Settings.
 
 Everything underneath — capture, AES-256-GCM encryption, search, per-app exclusions, sensitive-data skipping — is the original's, unchanged.
@@ -69,15 +72,15 @@ Requires macOS 14 Sonoma or later, and Xcode Command Line Tools (`xcode-select -
 
 | Action | Shortcut |
 |---|---|
-| Open popup | `⌥V` *(customisable in Settings)* |
-| Navigate | `↑` / `↓` |
+| Open popup | `⌘⇧V` *(customisable in Settings)* |
+| Navigate | `↑` / `↓` *(or `←` / `→` in bottom-tray mode)* |
 | Paste (with formatting) | `↵` |
 | Paste as plain text | `⇧↵` |
 | Search | Just start typing |
-| Pin / unpin item | `⌘P` *(or click the pin icon on the row)* |
-| Delete item | `⌘⌫` *(or click the trash icon on the row)* |
+| Pin / unpin item | `⌘P` *(or the pin button on the selected item)* |
+| Delete item | `⌘⌫` *(or the trash button on the selected item)* |
 | Close | `Esc` or click outside |
-| Settings | Menu bar icon → **Settings…** |
+| Settings | Gear button in the popup *(or the menu bar icon, if shown)* |
 
 ---
 
