@@ -52,15 +52,18 @@ xcrun notarytool submit "$APP_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$APP_BUNDLE"
 rm -f "$APP_ZIP"
 
-# ── 5. Build the DMG from the stapled app, notarise + staple it too ────────────
-echo "▸ Creating + notarising DMG…"
+# ── 5. Build the DMG from the stapled app, sign + notarise + staple it too ─────
+echo "▸ Creating, signing + notarising DMG…"
 make_dmg "$APP_BUNDLE" "$DMG"
+# Sign the disk image as well, so Gatekeeper assessment of the DMG is unambiguous.
+codesign --force --timestamp --sign "$DEV_ID" "$DMG"
 xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$DMG"
 
 # ── 6. Verify Gatekeeper acceptance ───────────────────────────────────────────
 echo "▸ Verifying…"
 spctl -a -t exec -vvv "$APP_BUNDLE" 2>&1 | sed 's/^/   /'
+spctl -a -t open --context context:primary-signature -vvv "$DMG" 2>&1 | sed 's/^/   /'
 xcrun stapler validate "$DMG"
 
 echo ""
