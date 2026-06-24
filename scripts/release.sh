@@ -77,16 +77,21 @@ cat > "$APPCAST" <<EOF
 }
 EOF
 
-# Upload runs in the `if` condition so a failure (e.g. wrangler lacking R2 scope)
+# Uploads run in the `if` condition so a failure (e.g. wrangler lacking R2 scope)
 # is NON-fatal — a successful notarised build is never discarded behind it.
+# Two DMG keys: the stable "ClipHistory.dmg" (always latest, what appcast points
+# at) and an immutable per-version "ClipHistory-<version>.dmg" archive.
+VERSIONED_DMG="$APP_NAME-$VERSION.dmg"
 if command -v wrangler >/dev/null 2>&1 \
    && wrangler r2 object put "$R2_BUCKET/$APP_NAME.dmg" --file "$DMG" --remote \
+   && wrangler r2 object put "$R2_BUCKET/$VERSIONED_DMG" --file "$DMG" --remote \
    && wrangler r2 object put "$R2_BUCKET/appcast.json" --file "$APPCAST" \
         --content-type application/json --remote; then
-    echo "✓  Uploaded $APP_NAME.dmg + appcast.json to R2 ($R2_BUCKET)."
+    echo "✓  Uploaded $APP_NAME.dmg, $VERSIONED_DMG + appcast.json to R2 ($R2_BUCKET)."
 else
     echo "⚠  Upload skipped/failed — DMG + appcast are built in $DIST/. Upload manually:" >&2
     echo "   wrangler r2 object put $R2_BUCKET/$APP_NAME.dmg --file $DMG --remote" >&2
+    echo "   wrangler r2 object put $R2_BUCKET/$VERSIONED_DMG --file $DMG --remote" >&2
     echo "   wrangler r2 object put $R2_BUCKET/appcast.json --file $APPCAST --content-type application/json --remote" >&2
 fi
 
