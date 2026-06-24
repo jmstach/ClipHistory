@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import CoreGraphics
+import ApplicationServices
 
 final class PopupWindowController {
     private var panel:      NSPanel?
@@ -227,12 +228,32 @@ final class PopupWindowController {
             userInfo: selfPtr
         )
 
-        guard let tap else { return }   // Accessibility permission not granted — degrade gracefully
+        guard let tap else {
+            // Accessibility not effective. The popup still opens via the Carbon
+            // hotkey, but no keys reach it — surface that instead of degrading
+            // silently (the view swaps the hints for an "enable access" banner).
+            popupState.keyboardActive = false
+            return
+        }
         let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), src, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         eventTap  = tap
         tapSource = src
+        popupState.keyboardActive = true
+    }
+
+    /// Re-prompt for Accessibility and open its System Settings pane. Currently
+    /// unwired — kept ready for the upcoming Settings-window rebuild, where the
+    /// Accessibility row's "grant access" button will call it. The red dot on the
+    /// popup's gear is the interim signal that the grant is missing.
+    func requestAccessibility() {
+        hide()
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(opts)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func stopEventTap() {

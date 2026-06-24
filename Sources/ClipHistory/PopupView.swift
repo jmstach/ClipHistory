@@ -415,7 +415,14 @@ struct PopupView: View {
         }
     }
 
+    // Something in Settings wants attention. For now that's only a missing
+    // Accessibility grant; the update-available flag will OR in here later.
+    private var settingsNeedsAttention: Bool {
+        !state.keyboardActive
+    }
+
     // Round gear button that opens Settings; material-backed so it reads on glass.
+    // A red dot signals there's something to deal with in Settings.
     private var settingsButton: some View {
         Button(action: onOpenSettings) {
             Image(systemName: "gearshape.fill")
@@ -424,9 +431,18 @@ struct PopupView: View {
                 .frame(width: 30, height: 30)
                 .background(.regularMaterial, in: Circle())
                 .overlay { Circle().strokeBorder(.primary.opacity(0.06), lineWidth: 1) }
+                .overlay(alignment: .topTrailing) {
+                    if settingsNeedsAttention {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 9, height: 9)
+                            .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.5))
+                            .offset(x: 1, y: -1)
+                    }
+                }
         }
         .buttonStyle(.plain)
-        .help("Settings")
+        .help(settingsNeedsAttention ? "Settings — Accessibility access needed" : "Settings")
     }
 
     // Centre the search by flanking a width-constrained field with spacers —
@@ -641,6 +657,9 @@ struct PopupView: View {
             hintChip(key: "esc", label: "close")
             Spacer()
         }
+        // Dim the hints when the keyboard tap isn't active — the keys don't work,
+        // and the red dot on the gear points to where to fix it.
+        .opacity(state.keyboardActive ? 1 : 0.4)
         .padding(.horizontal, 16)
         .padding(.top, 3)      // tighter gap above the hints (between cards and tips)
         .padding(.bottom, 12)  // keep a comfortable margin to the tray's bottom edge

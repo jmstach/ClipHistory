@@ -9,6 +9,9 @@ final class PopupState {
     var showToken    = UUID()
     var searchText   = ""
     var selectedIndex = 0
+    /// False when the keyboard CGEventTap could not be installed (Accessibility
+    /// not effective) — drives the in-popup banner. Set on each show.
+    var keyboardActive = true
 
     func reset() {
         showToken     = UUID()
