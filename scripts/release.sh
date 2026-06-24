@@ -77,13 +77,15 @@ cat > "$APPCAST" <<EOF
 }
 EOF
 
-if command -v wrangler >/dev/null 2>&1; then
-    wrangler r2 object put "$R2_BUCKET/$APP_NAME.dmg" --file "$DMG" --remote
-    wrangler r2 object put "$R2_BUCKET/appcast.json" --file "$APPCAST" \
-        --content-type application/json --remote
+# Upload runs in the `if` condition so a failure (e.g. wrangler lacking R2 scope)
+# is NON-fatal — a successful notarised build is never discarded behind it.
+if command -v wrangler >/dev/null 2>&1 \
+   && wrangler r2 object put "$R2_BUCKET/$APP_NAME.dmg" --file "$DMG" --remote \
+   && wrangler r2 object put "$R2_BUCKET/appcast.json" --file "$APPCAST" \
+        --content-type application/json --remote; then
     echo "✓  Uploaded $APP_NAME.dmg + appcast.json to R2 ($R2_BUCKET)."
 else
-    echo "⚠  wrangler not found — DMG + appcast built locally but NOT uploaded. Run:" >&2
+    echo "⚠  Upload skipped/failed — DMG + appcast are built in $DIST/. Upload manually:" >&2
     echo "   wrangler r2 object put $R2_BUCKET/$APP_NAME.dmg --file $DMG --remote" >&2
     echo "   wrangler r2 object put $R2_BUCKET/appcast.json --file $APPCAST --content-type application/json --remote" >&2
 fi
