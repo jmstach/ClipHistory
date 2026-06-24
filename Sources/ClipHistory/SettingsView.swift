@@ -1,36 +1,50 @@
 import AppKit
 import SwiftUI
+import ApplicationServices
 
+/// Settings, hand-laid-out to match contemporary Mac app settings (Music, Maps):
+/// icon tabs, a centre-equalised form with right-aligned labels and left-aligned
+/// controls, left checkboxes indented to the control column, grey pop-up menus,
+/// hairline dividers between groups, and no rounded "wells". A flat layout (not a
+/// grouped Form) has an intrinsic height, so the window sizes to its content.
 struct SettingsView: View {
     @Bindable var settings: AppSettings
-    let store:    ClipboardStore
+    let store:        ClipboardStore
+    var updateChecker: UpdateChecker
     var onReopenOnboarding: (() -> Void)?
 
-    @State private var showClearAlert = false
+    enum Tab: Hashable { case general, history, privacy }
 
-    private var knownSourceApps: [SourceApp] {
-        var seen = Set<String>()
-        return store.items
-            .compactMap(\.sourceApp)
-            .filter { seen.insert($0.bundleID).inserted }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
+    @State private var tab: Tab = .general
+    @State private var showClearAlert       = false
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var checkingUpdate        = false
+
+    private let margin: CGFloat = 20
+    private static let noMaximum = 100_000   // "No maximum" maps to a large cap
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                generalSection
-                shortcutSection
-                historySection
-                privacySection
-                footerLink
+        VStack(spacing: 0) {
+            tabBar
+            Group {
+                switch tab {
+                case .general: generalTab
+                case .history: historyTab
+                case .privacy: privacyTab
+                }
             }
-            .padding(28)
+            .padding(.horizontal, margin)
+            .padding(.top, 16)
+            .padding(.bottom, margin)
+            // Fill the height below the tab bar and top-align, so the tab bar stays
+            // pinned at the top and short tabs leave whitespace at the bottom.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 480, height: 600)
-        .background {
-            VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
-                .ignoresSafeArea()
+        // Fixed height (sized to the busiest tab) so the tab bar never moves between
+        // tabs; lighter tabs simply have whitespace below.
+        .frame(width: 480, height: 470)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            accessibilityGranted = AXIsProcessTrusted()
         }
         .alert("Clear clipboard history?", isPresented: $showClearAlert) {
             Button("Clear All", role: .destructive) { store.clearAll() }
@@ -40,306 +54,266 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Tab bar
 
-    private var generalSection: some View {
-        SettingsSection(title: "General") {
-            SettingsRow(icon: "bolt.fill",
-                        iconColor: .accentColor,
-                        label: "Launch at Login",
-                        hint: "Start ClipHistory automatically when you log in.") {
-                Toggle("", isOn: $settings.launchAtLogin)
-                    .toggleStyle(.switch)
+    private var tabBar: some View {
+        HStack(spacing: 6) {
+            tabButton(.general, "General", "gearshape")
+            tabButton(.history, "History", "clock")
+            tabButton(.privacy, "Privacy", "hand.raised")
+        }
+        .frame(maxWidth: .infinity)   // centre the tabs
+        .padding(.top, 10)            // close to the top, clear of the title row
+        .padding(.bottom, 10)
+    }
+
+    private func tabButton(_ t: Tab, _ title: String, _ icon: String) -> some View {
+        Button { tab = t } label: {
+            VStack(spacing: 3) {
+                Image(systemName: icon).font(.system(size: 17, weight: .regular))
+                Text(title).font(.system(size: 11))
+            }
+            .frame(width: 68, height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(tab == t ? Color.primary.opacity(0.1) : .clear)
+            )
+            .foregroundStyle(tab == t ? Color.accentColor : Color.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - General
+
+    private var generalTab: some View {
+        VStack(spacing: 0) {
+            Grid(alignment: .topLeading, horizontalSpacing: 10, verticalSpacing: 8) {
+                GridRow {
+                    Text("Launch at login").gridColumnAlignment(.trailing)
+                    Toggle("", isOn: $settings.launchAtLogin)
+                        .toggleStyle(.checkbox).labelsHidden()
+                        .gridColumnAlignment(.leading)
+                }
+                GridRow {
+                    Text("Popup position")
+                    Picker("", selection: $settings.popupPlacement) {
+                        ForEach(PopupPlacement.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
                     .labelsHidden()
-            }
-
-            Divider().padding(.horizontal, 16).opacity(0.5)
-
-            SettingsRow(icon: "macwindow.on.rectangle",
-                        iconColor: .teal,
-                        label: "Popup Position",
-                        hint: "Where the popup appears when you open it.") {
-                Picker("", selection: $settings.popupPlacement) {
-                    ForEach(PopupPlacement.allCases, id: \.self) { placement in
-                        Text(placement.label).tag(placement)
-                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 160)
-            }
-
-            Divider().padding(.horizontal, 16).opacity(0.5)
-
-            SettingsRow(icon: "menubar.rectangle",
-                        iconColor: .indigo,
-                        label: "Hide Menu Bar Icon",
-                        hint: "Open Settings with the gear button in the popup.") {
-                Toggle("", isOn: $settings.hideMenuBarIcon)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-            }
-        }
-    }
-
-    private var shortcutSection: some View {
-        SettingsSection(title: "Shortcut") {
-            VStack(alignment: .leading, spacing: 0) {
-                SettingsRow(icon: "keyboard.fill",
-                            iconColor: .blue,
-                            label: "Open Popup",
-                            hint: "↵ pastes with formatting, ⇧↵ as plain text.") {
-                    HotkeyRecorder(hotkey: $settings.hotkey)
-                        .frame(width: 160, height: 32)
-                }
-
-                Text("Click the field, then press your desired shortcut.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary.opacity(0.5))
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 14)
-            }
-        }
-    }
-
-    private var historySection: some View {
-        SettingsSection(title: "History") {
-            VStack(spacing: 0) {
-                SettingsRow(icon: "tray.full.fill",
-                            iconColor: .accentColor,
-                            label: "Max Items",
-                            hint: "Oldest unpinned clips are trimmed.") {
-                    HStack(spacing: 12) {
-                        Text("\(settings.maxItems)")
-                            .font(.system(size: 14, weight: .bold))
-                            .monospacedDigit()
-                            .frame(minWidth: 34, alignment: .trailing)
-                        Stepper("", value: $settings.maxItems, in: 5...500)
-                            .labelsHidden()
+                GridRow {
+                    Text("Hide menu bar icon")
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Toggle("", isOn: $settings.hideMenuBarIcon).toggleStyle(.checkbox).labelsHidden()
+                        description("With the icon hidden, open Settings from the gear button in the popup.")
                     }
                 }
 
-                Divider().padding(.horizontal, 16).opacity(0.5)
-
-                SettingsRow(icon: "clock.fill",
-                            iconColor: .secondary,
-                            label: "Capacity",
-                            hint: "Current amount of stored clips.") {
-                    Text("\(store.items.count) clips")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider().padding(.horizontal, 16).opacity(0.5)
-
-                HStack(spacing: 12) {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.red)
-                        .frame(width: 32, height: 32)
-                        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Clear All Data")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("This removes all clips permanently.")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(.secondary.opacity(0.6))
+                gridDivider()
+                GridRow {
+                    Text("Open popup")
+                    VStack(alignment: .leading, spacing: 4) {
+                        HotkeyRecorder(hotkey: $settings.hotkey).frame(width: 150, height: 24)
+                        description("↵ pastes with formatting,\n⇧↵ as plain text.")
                     }
+                    // The recorder is an NSView with no text baseline, so pin the
+                    // group's baseline near the box centre to line up with the label.
+                    .alignmentGuide(.firstTextBaseline) { _ in 16 }
+                }
 
-                    Spacer()
-
-                    Button("Clear") {
-                        showClearAlert = true
+                gridDivider()
+                GridRow {
+                    Text("Keyboard navigation")
+                    VStack(alignment: .leading, spacing: 4) {
+                        accessibilityControl
+                        description("Required for arrow keys, search and Return inside the popup.")
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-                    .controlSize(.regular)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-            }
-        }
-    }
 
-    private var privacySection: some View {
-        SettingsSection(title: "Privacy") {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.green)
-                        .frame(width: 32, height: 32)
-                        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-
-                    Text("Sensitive content and password managers are always ignored. You can manually exclude specific apps below.")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.8))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(16)
-
-                Divider().padding(.horizontal, 16).opacity(0.5)
-
-                if knownSourceApps.isEmpty {
-                    HStack(spacing: 12) {
-                        Image(systemName: "app.dashed")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.secondary.opacity(0.3))
-                            .frame(width: 32, height: 32)
-                            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("No apps detected")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("Apps appear here after they copy content.")
-                                .font(.system(size: 11.5, weight: .medium))
-                                .foregroundStyle(.secondary.opacity(0.4))
+                gridDivider()
+                GridRow {
+                    Text("Version")
+                    HStack(spacing: 10) {
+                        Text(appVersion).foregroundStyle(.secondary)
+                        Button(checkingUpdate ? "Checking…" : "Check for Updates") {
+                            Task { checkingUpdate = true; await updateChecker.check(); checkingUpdate = false }
                         }
+                        .disabled(checkingUpdate)
+                        if let update = updateChecker.available {
+                            Button("Download \(update.version)") { NSWorkspace.shared.open(update.downloadURL) }
+                                .buttonStyle(.borderedProminent)
+                            if let notes = update.notesURL { Link("Release notes", destination: notes) }
+                        }
+                    }
+                }
+            }
+
+            Spacer(minLength: 16)   // pin the bottom buttons to the window bottom
+            Divider().padding(.bottom, 16)
+            HStack {
+                Button("Restart Setup Guide…") { onReopenOnboarding?() }
+                Spacer()
+                Button("Quit ClipHistory") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q", modifiers: .command)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - History
+
+    private var historyTab: some View {
+        VStack(spacing: 0) {
+            Grid(alignment: .topLeading, horizontalSpacing: 10, verticalSpacing: 8) {
+                GridRow {
+                    Text("Maximum items").gridColumnAlignment(.trailing)
+                    Picker("", selection: $settings.maxItems) {
+                        Text("50").tag(50)
+                        Text("100").tag(100)
+                        Text("150").tag(150)
+                        Text("No maximum").tag(Self.noMaximum)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .gridColumnAlignment(.leading)
+                }
+                GridRow {
+                    Text("")
+                    description("Oldest unpinned clips are trimmed once the limit is reached.")
+                }
+                GridRow {
+                    Text("Stored clips")
+                    Text("\(store.items.count)").foregroundStyle(.secondary)
+                }
+
+                gridDivider()
+                GridRow {
+                    Text("")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button("Clear All History…", role: .destructive) { showClearAlert = true }
+                        description("Permanently removes every stored clip.")
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Privacy
+
+    private var privacyTab: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            description("Sensitive content and password managers are always ignored. Uncheck an app to stop capturing what it copies.")
+
+            Text("Monitored apps")
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+
+            if knownSourceApps.isEmpty {
+                Text("Apps appear here after they’ve copied something.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                appsTable
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // Bordered, alternating-row table — checkbox · icon · name. Checked = monitored.
+    private var appsTable: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(knownSourceApps.indices, id: \.self) { i in
+                    let app = knownSourceApps[i]
+                    HStack(spacing: 10) {
+                        Toggle("", isOn: monitorBinding(app)).toggleStyle(.checkbox).labelsHidden()
+                        if let icon = app.icon {
+                            Image(nsImage: icon).resizable().frame(width: 22, height: 22)
+                        }
+                        Text(app.name)
                         Spacer()
                     }
-                    .padding(16)
-                } else {
-                    ForEach(Array(knownSourceApps.enumerated()), id: \.element.bundleID) { i, app in
-                        if i > 0 { Divider().padding(.horizontal, 16).opacity(0.5) }
-                        appExcludeRow(app)
-                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(i.isMultiple(of: 2) ? Color.clear : Color.primary.opacity(0.04))
                 }
             }
         }
+        .frame(height: 220)
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.primary.opacity(0.12)))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    private func appExcludeRow(_ app: SourceApp) -> some View {
-        let excluded = settings.excludedBundleIDs.contains(app.bundleID)
-        return HStack(spacing: 12) {
-            if let icon = app.icon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 32, height: 32)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
-            } else {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.primary.opacity(0.05))
-                    .frame(width: 32, height: 32)
-                    .overlay {
-                        Image(systemName: "app.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary.opacity(0.5))
-                    }
-            }
+    // MARK: - Building blocks
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(app.name)
-                    .font(.system(size: 14, weight: .bold))
-                Text(excluded ? "Excluded" : "Monitored")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(excluded ? Color.accentColor : Color.secondary.opacity(0.6))
-            }
-
-            Spacer()
-
-            Toggle("", isOn: Binding(
-                get: { excluded },
-                set: { on in
-                    if on { settings.excludedBundleIDs.insert(app.bundleID) }
-                    else  { settings.excludedBundleIDs.remove(app.bundleID) }
-                }
-            ))
-            .toggleStyle(.switch)
-            .labelsHidden()
-            .controlSize(.small)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-    }
-
-    private var footerLink: some View {
-        HStack(spacing: 16) {
-            Button {
-                onReopenOnboarding?()
-            } label: {
-                Label("Restart Guide", systemImage: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.secondary.opacity(0.4))
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                NSApp.terminate(nil)
-            } label: {
-                Label("Quit ClipHistory", systemImage: "power")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.secondary.opacity(0.4))
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut("q", modifiers: .command)
-        }
-        .padding(.vertical, 8)
-    }
-}
-
-// MARK: - Reusable section container
-
-private struct SettingsSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.primary.opacity(0.9))
-                .padding(.horizontal, 4)
-
-            VStack(spacing: 0) {
-                content()
-            }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.panelRadius))
+    // A divider spanning both grid columns, with breathing room above/below.
+    private func gridDivider() -> some View {
+        GridRow {
+            Divider().gridCellColumns(2).padding(.vertical, 6)
         }
     }
-}
 
-// MARK: - Single labeled row
+    private func description(_ text: String) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
 
-private struct SettingsRow<Trailing: View>: View {
-    let icon: String
-    var iconColor: Color = .accentColor
-    let label: String
-    var hint:  String? = nil
-    @ViewBuilder let trailing: () -> Trailing
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(iconColor)
-                .frame(width: 32, height: 32)
-                .background(iconColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label)
-                    .font(.system(size: 14, weight: .bold))
-                if let hint {
-                    Text(hint)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.6))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Spacer()
-
-            trailing()
+    @ViewBuilder
+    private var accessibilityControl: some View {
+        if accessibilityGranted {
+            Label("Granted", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .labelStyle(.titleAndIcon)
+        } else {
+            Button("Grant Access…") { requestAccessibility() }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+    }
+
+    // MARK: - Helpers
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
+    private var knownSourceApps: [SourceApp] {
+        var seen = Set<String>()
+        return store.items
+            .compactMap(\.sourceApp)
+            .filter { seen.insert($0.bundleID).inserted }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    // Checked = monitored (captured); unchecked = excluded.
+    private func monitorBinding(_ app: SourceApp) -> Binding<Bool> {
+        Binding(
+            get: { !settings.excludedBundleIDs.contains(app.bundleID) },
+            set: { monitored in
+                if monitored { settings.excludedBundleIDs.remove(app.bundleID) }
+                else         { settings.excludedBundleIDs.insert(app.bundleID) }
+            }
+        )
+    }
+
+    private func requestAccessibility() {
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(opts)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
 
 // MARK: - Visual Effect View helper
-
+//
+// Still used by OnboardingView for its window background.
 struct VisualEffectView: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode

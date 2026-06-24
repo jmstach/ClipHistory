@@ -1,7 +1,6 @@
 import AppKit
 import SwiftUI
 import CoreGraphics
-import ApplicationServices
 
 final class PopupWindowController {
     private var panel:      NSPanel?
@@ -247,19 +246,6 @@ final class PopupWindowController {
         eventTap  = tap
         tapSource = src
         popupState.keyboardActive = true
-    }
-
-    /// Re-prompt for Accessibility and open its System Settings pane. Currently
-    /// unwired — kept ready for the upcoming Settings-window rebuild, where the
-    /// Accessibility row's "grant access" button will call it. The red dot on the
-    /// popup's gear is the interim signal that the grant is missing.
-    func requestAccessibility() {
-        hide()
-        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        AXIsProcessTrustedWithOptions(opts)
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
     }
 
     private func stopEventTap() {

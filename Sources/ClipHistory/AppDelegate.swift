@@ -68,6 +68,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             await updateChecker.checkIfDue()
             popup.setUpdateAvailable(updateChecker.available != nil)
         }
+
+
+
+
+
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -132,16 +137,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let view       = SettingsView(settings: settings, store: store,
+                                     updateChecker: updateChecker,
                                      onReopenOnboarding: { [weak self] in
                                          self?.settingsWindow?.orderOut(nil)
                                          UserDefaults.standard.removeObject(forKey: Self.onboardingDoneKey)
                                          self?.showOnboarding()
                                      })
+        // No sizingOptions: the SwiftUI view is a fixed size, so the window never
+        // resizes between tabs — the tab bar stays put.
         let controller = NSHostingController(rootView: view)
         let win        = NSWindow(contentViewController: controller)
-        win.title                = "ClipHistory Settings"
-        win.styleMask            = NSWindow.StyleMask([.titled, .closable])
-        win.isReleasedWhenClosed = false
+        win.title                  = "Settings"
+        // Transparent, separator-less titlebar with full-size content so the title
+        // sits above the tab bar with no hairline (like Maps/Music settings).
+        win.styleMask              = [.titled, .closable, .fullSizeContentView]
+        win.titlebarAppearsTransparent = true
+        win.titlebarSeparatorStyle = .none
+        win.isReleasedWhenClosed   = false
         win.center()
         settingsWindow = win
 
