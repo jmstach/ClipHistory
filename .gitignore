@@ -14,11 +14,10 @@ DerivedData/
 .DS_Store
 **/.DS_Store
 
-# Build output (the DMG is a release artifact, not source)
-dist/ClipHistory.app/
-dist/ClipHistory.dmg
-dist/AppIcon.iconset/
-dist/AppIcon.icns
+# Build output — everything in dist/ is generated (app, dmg, icons, appcast.json)
+dist/
+# Cloudflare wrangler local state/cache (includes account info — never commit)
+.wrangler/
 .claude/
 docs/linkedin-mockup.html
 
