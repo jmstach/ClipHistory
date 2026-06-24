@@ -95,7 +95,7 @@ struct SettingsView: View {
                         .toggleStyle(.checkbox).labelsHidden()
                         .gridColumnAlignment(.leading)
                 }
-                GridRow {
+                GridRow(alignment: .firstTextBaseline) {
                     Text("Popup position")
                     Picker("", selection: $settings.popupPlacement) {
                         ForEach(PopupPlacement.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -151,8 +151,7 @@ struct SettingsView: View {
                 }
             }
 
-            Spacer(minLength: 16)   // pin the bottom buttons to the window bottom
-            Divider().padding(.bottom, 16)
+            Spacer(minLength: 24)   // pin the bottom buttons to the window bottom
             HStack {
                 Button("Restart Setup Guide…") { onReopenOnboarding?() }
                 Spacer()
@@ -168,7 +167,7 @@ struct SettingsView: View {
     private var historyTab: some View {
         VStack(spacing: 0) {
             Grid(alignment: .topLeading, horizontalSpacing: 10, verticalSpacing: 8) {
-                GridRow {
+                GridRow(alignment: .firstTextBaseline) {
                     Text("Maximum items").gridColumnAlignment(.trailing)
                     Picker("", selection: $settings.maxItems) {
                         Text("50").tag(50)
@@ -190,11 +189,11 @@ struct SettingsView: View {
                     Text("\(store.items.count)").foregroundStyle(.secondary)
                 }
 
-                gridDivider()
                 GridRow {
                     Text("")
                     VStack(alignment: .leading, spacing: 4) {
                         Button("Clear All History…", role: .destructive) { showClearAlert = true }
+                            .padding(.top, 12)
                         description("Permanently removes every stored clip.")
                     }
                 }
