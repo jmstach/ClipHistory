@@ -134,9 +134,9 @@ struct SettingsView: View {
                 }
 
                 gridDivider()
-                GridRow {
+                GridRow(alignment: .firstTextBaseline) {
                     Text("Version")
-                    HStack(spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(appVersion).foregroundStyle(.secondary)
                         Button(checkingUpdate ? "Checking…" : "Check for Updates") {
                             Task { checkingUpdate = true; await updateChecker.check(); checkingUpdate = false }
