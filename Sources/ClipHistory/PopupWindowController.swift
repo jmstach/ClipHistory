@@ -103,6 +103,9 @@ final class PopupWindowController {
             pb.writeObjects(urls as [NSURL])
         }
 
+        // Bubble the just-pasted clip up to the top of the unpinned list.
+        store.promoteToTop(id: item.id)
+
         hide()
 
         // Short delay so the panel finishes dismissing before Cmd+V fires.

@@ -348,6 +348,19 @@ final class ClipboardStore {
         }
     }
 
+    /// Move an unpinned clip to the top of the unpinned section — used when it's
+    /// pasted, so most-recently-used bubbles up. Pinned clips keep their place,
+    /// and the clip's timestamp is left as its cut/copy time (only order changes).
+    func promoteToTop(id: UUID) {
+        guard let idx = items.firstIndex(where: { $0.id == id }),
+              !items[idx].pinned else { return }
+        let boundary = items.firstIndex(where: { !$0.pinned }) ?? 0
+        guard idx != boundary else { return }   // already top of the unpinned list
+        let item = items.remove(at: idx)
+        items.insert(item, at: boundary)
+        scheduleSave()
+    }
+
     func filtered(query: String, showImages: Bool = true) -> [ClipItem] {
         var result = items
         if !showImages { result = result.filter { !$0.isImage } }
