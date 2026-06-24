@@ -415,10 +415,10 @@ struct PopupView: View {
         }
     }
 
-    // Something in Settings wants attention. For now that's only a missing
-    // Accessibility grant; the update-available flag will OR in here later.
+    // Something in Settings wants attention: a missing Accessibility grant or an
+    // available update.
     private var settingsNeedsAttention: Bool {
-        !state.keyboardActive
+        !state.keyboardActive || state.updateAvailable
     }
 
     // Round gear button that opens Settings; material-backed so it reads on glass.

@@ -16,6 +16,12 @@ final class PopupWindowController {
     /// Invoked when the user taps the in-popup settings gear. Set by AppDelegate.
     var openSettings: (() -> Void)?
 
+    /// Reflects an available update onto the popup's gear dot. Set by AppDelegate
+    /// after its update check.
+    func setUpdateAvailable(_ available: Bool) {
+        popupState.updateAvailable = available
+    }
+
     init(store: ClipboardStore, settings: AppSettings) {
         self.store    = store
         self.settings = settings

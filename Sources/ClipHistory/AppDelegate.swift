@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var settings: AppSettings!
     private var store:    ClipboardStore!
     private var popup:    PopupWindowController!
+    private var updateChecker: UpdateChecker!
 
     // MARK: - UI
 
@@ -45,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settings = AppSettings()
         store    = ClipboardStore(maxCount: settings.maxItems)
         popup    = PopupWindowController(store: store, settings: settings)
+        updateChecker = UpdateChecker()
 
         // Wire setting-change callbacks
         settings.onHotkeyChanged   = { [weak self] _ in self?.reRegisterHotkey() }
@@ -60,6 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startClipboardMonitoring()
         requestAccessibilityAndRegisterHotkey()
         showOnboardingIfNeeded()
+
+        // Throttled update check (~once/day); lights the popup's gear dot if newer.
+        Task { @MainActor in
+            await updateChecker.checkIfDue()
+            popup.setUpdateAvailable(updateChecker.available != nil)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -66,6 +66,29 @@ spctl -a -t exec -vvv "$APP_BUNDLE" 2>&1 | sed 's/^/   /'
 spctl -a -t open --context context:primary-signature -vvv "$DMG" 2>&1 | sed 's/^/   /'
 xcrun stapler validate "$DMG"
 
+# ── 7. Publish to Cloudflare R2 (DMG + appcast.json on stable keys) ────────────
+echo "▸ Writing appcast.json + uploading to R2…"
+APPCAST="$DIST/appcast.json"
+cat > "$APPCAST" <<EOF
+{
+  "version": "$VERSION",
+  "url": "$DOWNLOAD_BASE/$APP_NAME.dmg",
+  "notesURL": "$NOTES_URL"
+}
+EOF
+
+if command -v wrangler >/dev/null 2>&1; then
+    wrangler r2 object put "$R2_BUCKET/$APP_NAME.dmg" --file "$DMG" --remote
+    wrangler r2 object put "$R2_BUCKET/appcast.json" --file "$APPCAST" \
+        --content-type application/json --remote
+    echo "✓  Uploaded $APP_NAME.dmg + appcast.json to R2 ($R2_BUCKET)."
+else
+    echo "⚠  wrangler not found — DMG + appcast built locally but NOT uploaded. Run:" >&2
+    echo "   wrangler r2 object put $R2_BUCKET/$APP_NAME.dmg --file $DMG --remote" >&2
+    echo "   wrangler r2 object put $R2_BUCKET/appcast.json --file $APPCAST --content-type application/json --remote" >&2
+fi
+
 echo ""
 echo "✓  $DMG — notarised & stapled, opens with no Gatekeeper warning."
+echo "   Published to $DOWNLOAD_BASE/  (update check reads appcast.json there)."
 echo "   Recipients still grant Accessibility once for the popup keyboard to work."

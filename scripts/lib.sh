@@ -6,9 +6,14 @@
 
 APP_NAME="ClipHistory"
 BUNDLE_ID="uk.stach.cliphistory"
-VERSION="1.3.0"
+VERSION="1.4.0"
 DEV_ID="Developer ID Application: Justin Stach (D25B8VCSB7)"
 NOTARY_PROFILE="ClipHistoryNotary"   # created via `xcrun notarytool store-credentials`
+
+# Cloudflare R2 release hosting (see UpdateChecker.swift — it reads appcast.json here).
+DOWNLOAD_BASE="https://downloads.cliphistory.stach.uk"   # custom domain on the bucket
+R2_BUCKET="cliphistory-downloads"                        # stable keys: ClipHistory.dmg + appcast.json
+NOTES_URL="https://github.com/jmstach/ClipHistory/releases"
 
 # write_info_plist <app_bundle>
 write_info_plist() {

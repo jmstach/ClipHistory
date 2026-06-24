@@ -10,8 +10,11 @@ final class PopupState {
     var searchText   = ""
     var selectedIndex = 0
     /// False when the keyboard CGEventTap could not be installed (Accessibility
-    /// not effective) — drives the in-popup banner. Set on each show.
+    /// not effective). Set on each show. Drives the gear's attention dot.
     var keyboardActive = true
+    /// True when a newer version is available. App-level, set by AppDelegate's
+    /// update check — deliberately NOT cleared by reset() (it outlives a show).
+    var updateAvailable = false
 
     func reset() {
         showToken     = UUID()
