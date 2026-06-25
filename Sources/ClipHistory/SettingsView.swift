@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var showClearAlert       = false
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var checkingUpdate        = false
+    @State private var checkedManually       = false
 
     private let margin: CGFloat = 20
 
@@ -135,16 +136,28 @@ struct SettingsView: View {
                 gridDivider()
                 GridRow(alignment: .firstTextBaseline) {
                     Text("Version")
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(appVersion).foregroundStyle(.secondary)
-                        Button(checkingUpdate ? "Checking…" : "Check for Updates") {
-                            Task { checkingUpdate = true; await updateChecker.check(); checkingUpdate = false }
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 10) {
+                            Text(appVersion).foregroundStyle(.secondary)
+                            Button(checkingUpdate ? "Checking…" : "Check for Updates") {
+                                Task {
+                                    checkingUpdate = true
+                                    await updateChecker.check()
+                                    checkingUpdate = false
+                                    checkedManually = true
+                                }
+                            }
+                            .disabled(checkingUpdate)
                         }
-                        .disabled(checkingUpdate)
                         if let update = updateChecker.available {
-                            Button("Download \(update.version)") { NSWorkspace.shared.open(update.downloadURL) }
-                                .buttonStyle(.borderedProminent)
-                            if let notes = update.notesURL { Link("Release notes", destination: notes) }
+                            description("Version \(update.version) is available.")
+                            HStack(spacing: 10) {
+                                Button("Download \(update.version)") { NSWorkspace.shared.open(update.downloadURL) }
+                                    .buttonStyle(.borderedProminent)
+                                if let notes = update.notesURL { Link("Release notes", destination: notes) }
+                            }
+                        } else if checkedManually && !checkingUpdate {
+                            description("You’re up to date.")
                         }
                     }
                 }
