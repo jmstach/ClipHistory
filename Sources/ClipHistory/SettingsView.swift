@@ -13,7 +13,7 @@ struct SettingsView: View {
     var updateChecker: UpdateChecker
     var onReopenOnboarding: (() -> Void)?
 
-    enum Tab: Hashable { case general, history, privacy }
+    enum Tab: Hashable { case general, history, privacy, cheers }
 
     @State private var tab: Tab = .general
     @State private var showClearAlert       = false
@@ -31,6 +31,7 @@ struct SettingsView: View {
                 case .general: generalTab
                 case .history: historyTab
                 case .privacy: privacyTab
+                case .cheers:  cheersTab
                 }
             }
             .padding(.horizontal, margin)
@@ -61,6 +62,7 @@ struct SettingsView: View {
             tabButton(.general, "General", "gearshape")
             tabButton(.history, "History", "clock")
             tabButton(.privacy, "Privacy", "hand.raised")
+            tabButton(.cheers,  "Cheers",  "mug.fill")
         }
         .frame(maxWidth: .infinity)   // centre the tabs
         .padding(.top, 10)            // close to the top, clear of the title row
@@ -259,6 +261,28 @@ struct SettingsView: View {
         .background(Color(nsColor: .textBackgroundColor))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.primary.opacity(0.12)))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    // MARK: - Cheers
+
+    private let paypalURL = URL(string: "https://www.paypal.me/adjsidjsdvs")!
+
+    private var cheersTab: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "mug.fill")
+                .font(.system(size: 46))
+                .foregroundStyle(.secondary)
+            Text("If you want to encourage me to keep building things like this, feel free to buy me a coffee, beer or fancy cocktail.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 320)
+            Button("Pay with PayPal") { NSWorkspace.shared.open(paypalURL) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)   // centre in the tab area
     }
 
     // MARK: - Building blocks
