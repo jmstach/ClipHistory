@@ -21,8 +21,9 @@ final class UpdateChecker {
     private let lastCheckKey = "lastUpdateCheck"
     private let dismissedKey  = "dismissedUpdateVersion"
 
-    /// Launch path: skip if we checked within the last day (unless forced, e.g.
-    /// a future manual "Check Now" button).
+    /// Skip if we checked within the last day, unless forced. The launch path
+    /// forces (check on every app start); the throttle is here for any unforced
+    /// caller. The manual "Check for Updates" button calls `check()` directly.
     func checkIfDue(force: Bool = false) async {
         if !force,
            let last = UserDefaults.standard.object(forKey: lastCheckKey) as? Date,

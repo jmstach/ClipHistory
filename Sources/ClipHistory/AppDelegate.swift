@@ -63,9 +63,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         requestAccessibilityAndRegisterHotkey()
         showOnboardingIfNeeded()
 
-        // Throttled update check (~once/day); lights the popup's gear dot if newer.
+        // Check for updates on every launch (force past the once/day throttle);
+        // lights the popup's gear dot if newer.
         Task { @MainActor in
-            await updateChecker.checkIfDue()
+            await updateChecker.checkIfDue(force: true)
             popup.setUpdateAvailable(updateChecker.available != nil)
         }
 
