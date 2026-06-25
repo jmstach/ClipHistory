@@ -27,7 +27,7 @@ final class AppSettings {
         didSet { save(); onHotkeyChanged?(hotkey) }
     }
 
-    var maxItems: Int = 50 {
+    var maxItems: Int = 150 {   // "Plenty"
         didSet { save(); onMaxItemsChanged?(maxItems) }
     }
 
