@@ -50,13 +50,8 @@ struct OnboardingView: View {
     // MARK: - Nav bar
 
     private var navBar: some View {
-        HStack {
-            if step > 0 {
-                Button("Back") { step -= 1 }
-            }
-
-            Spacer()
-
+        ZStack {
+            // Page dots centred to the window, not to the gap left of Continue.
             HStack(spacing: 8) {
                 ForEach(0..<totalSteps, id: \.self) { i in
                     Circle()
@@ -65,19 +60,28 @@ struct OnboardingView: View {
                 }
             }
 
-            Spacer()
+            HStack {
+                if step > 0 {
+                    Button("Back") { step -= 1 }
+                        .buttonStyle(.bordered)
+                }
 
-            if step < totalSteps - 1 {
-                Button("Continue") { step += 1 }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!canAdvance)
-            } else {
-                Button("Get Started") { onDone() }
-                    .keyboardShortcut(.defaultAction)
+                Spacer()
+
+                if step < totalSteps - 1 {
+                    Button("Continue") { step += 1 }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!canAdvance)
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Get Started") { onDone() }
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
+                }
             }
         }
-        .buttonStyle(.borderedProminent)
         .controlSize(.large)
+        .buttonBorderShape(.roundedRectangle)
     }
 
     /// Step 0 is gated on the Accessibility grant — the rest of the app is dead
@@ -90,10 +94,9 @@ struct OnboardingView: View {
 
     private var welcomeStep: some View {
         VStack(spacing: 14) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 72, height: 72)
-                .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
+            Image(systemName: "paperclip.circle.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(.tint)
 
             Text("Welcome to ClipHistory")
                 .font(.largeTitle.bold())
@@ -122,13 +125,13 @@ struct OnboardingView: View {
                 if !axGranted {
                     Button("Open Accessibility Settings…") { requestAccessibility() }
                         .buttonStyle(.borderedProminent)
-                        .tint(.orange)
+                        .buttonBorderShape(.capsule)
+                        .padding(.top, 2)
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quinary, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.quaternary))
             .padding(.top, 6)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: axGranted)
         }
