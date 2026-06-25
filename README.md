@@ -14,7 +14,7 @@ A personal fork of [**weiykong/ClipHistory**](https://github.com/weiykong/ClipHi
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)](https://swift.org)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**Build from source**](#install) · [This fork](https://github.com/jmstach/ClipHistory) · [Original project](https://github.com/weiykong/ClipHistory)
+[**Download**](#install) · [This fork](https://github.com/jmstach/ClipHistory) · [Original project](https://github.com/weiykong/ClipHistory)
 
 </div>
 
@@ -49,22 +49,27 @@ Everything underneath — capture, AES-256-GCM encryption, search, per-app exclu
 
 ## Install
 
-This fork has no prebuilt release — build it from source:
+**Download the latest release** — notarised, so it opens with no Gatekeeper warning:
+
+[**Download ClipHistory.dmg**](https://downloads.cliphistory.stach.uk/ClipHistory.dmg) · [Release notes](https://github.com/jmstach/ClipHistory/releases)
+
+Open the DMG, drag **ClipHistory.app** to `/Applications`, and grant **Accessibility** permission when onboarding asks — it's needed for the hotkey and the popup's keyboard navigation. The app checks for updates on launch and tells you when a new version is out.
+
+Requires macOS 14 Sonoma or later.
+
+### Build from source
 
 ```bash
 git clone https://github.com/jmstach/ClipHistory.git
 cd ClipHistory
-bash scripts/build-dmg.sh   # → dist/ClipHistory.dmg
+bash scripts/build-dmg.sh   # → dist/ClipHistory.dmg  (ad-hoc signed)
 ```
 
-Open `dist/ClipHistory.dmg`, drag **ClipHistory.app** to `/Applications`, and grant **Accessibility** permission when the onboarding screen asks — it's needed for the hotkey and the popup's keyboard navigation.
+Requires Xcode Command Line Tools (`xcode-select --install`). A from-source build is ad-hoc signed rather than notarised, so macOS quarantines it when you move it to another Mac. Clear it once after dragging to `/Applications`:
 
-Requires macOS 14 Sonoma or later, and Xcode Command Line Tools (`xcode-select --install`).
-
-> **Sharing the built app with someone else?** Because it isn't notarised, macOS quarantines it when copied to another Mac. They clear it once after dragging it to `/Applications`:
-> ```bash
-> xattr -dr com.apple.quarantine /Applications/ClipHistory.app
-> ```
+```bash
+xattr -dr com.apple.quarantine /Applications/ClipHistory.app
+```
 
 ---
 
