@@ -20,6 +20,9 @@ dist/
 .wrangler/
 .claude/
 docs/linkedin-mockup.html
+# Reference material — screenshots and competitor video, not for upstream
+docs/References/
+docs/Video/
 
 # Local-only planning scratch file (references signing identity, not for upstream)
 TODO.md
