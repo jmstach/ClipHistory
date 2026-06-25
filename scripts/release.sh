@@ -30,12 +30,9 @@ cd "$ROOT"
 echo "▸ Building release binary…"
 swift build -c release
 
-# ── 2. Icon ───────────────────────────────────────────────────────────────────
-echo "▸ Generating icons…"
-mkdir -p "$DIST"
-swift scripts/generate-icons.swift "$DIST"
-iconutil -c icns "$DIST/AppIcon.iconset" -o "$DIST/AppIcon.icns"
-rm -rf "$DIST/AppIcon.iconset"
+# ── 2. Icon (Icon Composer → Assets.car + loose icns) ─────────────────────────
+echo "▸ Compiling icon…"
+build_app_icon "$DIST"
 
 # ── 3. Assemble + sign with hardened runtime ──────────────────────────────────
 echo "▸ Assembling + signing (Developer ID, hardened runtime)…"
@@ -65,6 +62,10 @@ echo "▸ Verifying…"
 spctl -a -t exec -vvv "$APP_BUNDLE" 2>&1 | sed 's/^/   /'
 spctl -a -t open --context context:primary-signature -vvv "$DMG" 2>&1 | sed 's/^/   /'
 xcrun stapler validate "$DMG"
+
+# Brand the local .dmg file icon last — resource-fork only, leaves the verified
+# signature + staple untouched. (Stripped on download; the volume icon survives.)
+set_file_icon "$DIST/AppIcon.icns" "$DMG"
 
 # ── 7. Publish to Cloudflare R2 (DMG + appcast.json on stable keys) ────────────
 echo "▸ Writing appcast.json + uploading to R2…"

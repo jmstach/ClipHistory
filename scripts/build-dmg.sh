@@ -16,12 +16,9 @@ echo "▸ Building release binary…"
 cd "$ROOT"
 swift build -c release
 
-# ── 2. Generate app icon ──────────────────────────────────────────────────────
-echo "▸ Generating icons…"
-mkdir -p "$DIST"
-swift scripts/generate-icons.swift "$DIST"
-iconutil -c icns "$DIST/AppIcon.iconset" -o "$DIST/AppIcon.icns"
-rm -rf "$DIST/AppIcon.iconset"
+# ── 2. Compile app icon (Icon Composer → Assets.car + loose icns) ─────────────
+echo "▸ Compiling icon…"
+build_app_icon "$DIST"
 
 # ── 3. Assemble .app bundle ───────────────────────────────────────────────────
 echo "▸ Assembling $APP_NAME.app…"
@@ -34,6 +31,7 @@ codesign --force --deep --sign - "$APP_BUNDLE"
 # ── 5. DMG ────────────────────────────────────────────────────────────────────
 echo "▸ Creating DMG…"
 make_dmg "$APP_BUNDLE" "$DMG"
+set_file_icon "$DIST/AppIcon.icns" "$DMG"
 
 echo ""
 echo "✓  $DMG"

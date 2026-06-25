@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Fast local iteration: rebuild, assemble, Developer ID sign, relaunch.
 # Developer ID (not ad-hoc) keeps the Accessibility grant stable across rebuilds
-# so the popup's CGEventTap keeps working. Reuses the last generated icon if
-# present; run build-dmg.sh or release.sh once if you want a fresh icon.
+# so the popup's CGEventTap keeps working. Compiles the icon every run (actool is
+# quick) so dist/ can never serve a stale icon into the bundle.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/lib.sh"
@@ -16,8 +16,11 @@ cd "$ROOT"
 echo "▸ Building…"
 swift build -c release
 
-echo "▸ Assembling + signing (Developer ID)…"
+echo "▸ Compiling icon…"
 mkdir -p "$DIST"
+build_app_icon "$DIST"
+
+echo "▸ Assembling + signing (Developer ID)…"
 assemble_bundle ".build/release/$APP_NAME" "$APP_BUNDLE" "$DIST/AppIcon.icns"
 codesign --force --sign "$DEV_ID" "$APP_BUNDLE"
 codesign --verify "$APP_BUNDLE"
