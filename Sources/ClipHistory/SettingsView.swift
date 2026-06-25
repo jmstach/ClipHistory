@@ -21,7 +21,6 @@ struct SettingsView: View {
     @State private var checkingUpdate        = false
 
     private let margin: CGFloat = 20
-    private static let noMaximum = 100_000   // "No maximum" maps to a large cap
 
     var body: some View {
         VStack(spacing: 0) {
@@ -170,10 +169,10 @@ struct SettingsView: View {
                 GridRow(alignment: .firstTextBaseline) {
                     Text("Maximum items").gridColumnAlignment(.trailing)
                     Picker("", selection: $settings.maxItems) {
-                        Text("50").tag(50)
-                        Text("100").tag(100)
-                        Text("150").tag(150)
-                        Text("No maximum").tag(Self.noMaximum)
+                        Text("Miserly (50)").tag(50)
+                        Text("Plenty (150)").tag(150)
+                        Text("Excessive (500)").tag(500)
+                        Text("Performance-limiting (5,000)").tag(5000)
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
@@ -185,7 +184,7 @@ struct SettingsView: View {
                     description("Oldest unpinned clips are trimmed once the limit is reached.")
                 }
                 GridRow {
-                    Text("Stored clips")
+                    Text("Currently stored clips")
                     Text("\(store.items.count)").foregroundStyle(.secondary)
                 }
 
