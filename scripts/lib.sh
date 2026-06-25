@@ -15,6 +15,11 @@ DOWNLOAD_BASE="https://downloads.cliphistory.stach.uk"   # custom domain on the 
 R2_BUCKET="cliphistory-downloads"                        # stable keys: ClipHistory.dmg + appcast.json
 NOTES_URL="https://github.com/jmstach/ClipHistory/releases"
 
+# GitHub release target. Must be set explicitly: this clone has an `upstream`
+# remote (weiykong/ClipHistory) and gh otherwise defaults there, where we have no
+# write access. NOTES_URL above must point at this same repo's /releases.
+GH_REPO="jmstach/ClipHistory"
+
 # write_info_plist <app_bundle>
 write_info_plist() {
     local bundle="$1"
@@ -156,4 +161,31 @@ import Cocoa
 let img = NSImage(contentsOfFile: CommandLine.arguments[1])!
 _ = NSWorkspace.shared.setIcon(img, forFile: CommandLine.arguments[2], options: [])
 SWIFT
+}
+
+# publish_github_release
+# Tags v$VERSION at HEAD and publishes a GitHub release on $GH_REPO, with notes
+# built from the commit subjects since the previous v* tag (the "Bump version"
+# commit filtered out). Targets $GH_REPO explicitly so gh can't fall back to the
+# upstream fork. Best-effort: the caller treats failure as non-fatal so a
+# notarised, R2-published build is never lost behind a tagging hiccup.
+publish_github_release() {
+    local tag="v$VERSION"
+    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+        echo "⚠  tag $tag already exists — skipping GitHub release." >&2
+        return 1
+    fi
+    command -v gh >/dev/null 2>&1 || { echo "⚠  gh not installed — skipping GitHub release." >&2; return 1; }
+
+    local prev notes
+    prev="$(git tag -l 'v*' --sort=-v:refname | head -1)"
+    if [ -n "$prev" ]; then
+        notes="$(git log --no-merges --pretty='- %s' "$prev..HEAD" | grep -vi '^- bump version')"
+    fi
+    [ -n "$notes" ] || notes="Maintenance release."
+    notes+=$'\n\n'"**Full Changelog**: https://github.com/$GH_REPO/commits/$tag"
+
+    git tag "$tag" && git push origin "$tag" || return 1
+    printf '%s\n' "$notes" | gh release create "$tag" \
+        --repo "$GH_REPO" --title "$APP_NAME $VERSION" --verify-tag --notes-file -
 }

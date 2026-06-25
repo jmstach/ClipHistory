@@ -96,6 +96,18 @@ else
     echo "   wrangler r2 object put $R2_BUCKET/appcast.json --file $APPCAST --content-type application/json --remote" >&2
 fi
 
+# ── 8. Tag + publish the GitHub release (the appcast's notesURL points here) ───
+# Non-fatal: distribution already succeeded above, so a tagging hiccup mustn't
+# fail the run. Assumes the release commit (the version bump) is HEAD.
+echo "▸ Publishing GitHub release…"
+if publish_github_release; then
+    echo "✓  GitHub release v$VERSION published to $GH_REPO."
+else
+    echo "⚠  GitHub release skipped/failed — tag + publish manually if wanted:" >&2
+    echo "   git tag v$VERSION && git push origin v$VERSION" >&2
+    echo "   gh release create v$VERSION --repo $GH_REPO --title \"$APP_NAME $VERSION\" --generate-notes" >&2
+fi
+
 echo ""
 echo "✓  $DMG — notarised & stapled, opens with no Gatekeeper warning."
 echo "   Published to $DOWNLOAD_BASE/  (update check reads appcast.json there)."
