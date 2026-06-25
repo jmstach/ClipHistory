@@ -6,7 +6,7 @@
 
 APP_NAME="ClipHistory"
 BUNDLE_ID="uk.stach.cliphistory"
-VERSION="1.4.0"
+VERSION="1.4.1"
 DEV_ID="Developer ID Application: Justin Stach (D25B8VCSB7)"
 NOTARY_PROFILE="ClipHistoryNotary"   # created via `xcrun notarytool store-credentials`
 
