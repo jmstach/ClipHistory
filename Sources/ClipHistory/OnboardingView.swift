@@ -1,23 +1,35 @@
 import AppKit
 import SwiftUI
+import ApplicationServices
 
+/// First-launch wizard, modelled on the Markset onboarding flow: one step on
+/// screen at a time with a Back · page-dots · Continue/Done nav bar. Step 1
+/// (Accessibility) is gated — you can't continue until the grant is effective.
 struct OnboardingView: View {
     @Bindable var settings: AppSettings
     var onDone: () -> Void
 
+    @State private var step = 0
     @State private var axGranted = AXIsProcessTrusted()
+
+    private let totalSteps = 3
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            steps
-            footer
+            stepContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.horizontal, 36)
+                .padding(.top, 40)
+                .padding(.bottom, 24)
+
+            Divider()
+
+            navBar
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
         }
-        .frame(width: 500)
-        .background {
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-        }
+        .frame(width: 520, height: 560)
+        // Poll the Accessibility grant so the gate opens the moment it's effective.
         .task {
             while !axGranted {
                 try? await Task.sleep(nanoseconds: 500_000_000)
@@ -26,160 +38,165 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(spacing: 6) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 64, height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
-                .padding(.bottom, 4)
-
-            Text("Set up ClipHistory")
-                .font(.system(size: 24, weight: .bold))
-            Text("Three simple steps to clipboard mastery.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.secondary.opacity(0.7))
+    @ViewBuilder
+    private var stepContent: some View {
+        switch step {
+        case 0:  welcomeStep
+        case 1:  shortcutStep
+        default: tryItStep
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 32)
-        .padding(.bottom, 24)
     }
 
-    // MARK: - Setup steps
+    // MARK: - Nav bar
 
-    private var steps: some View {
-        VStack(spacing: 14) {
-            accessibilityCard
-            launchAtLoginCard
-            shortcutCard
-        }
-        .padding(.horizontal, 24)
-    }
-
-    private var accessibilityCard: some View {
-        SetupCard(icon: "hand.raised.fill",
-                  iconColor: axGranted ? .green : .orange,
-                  title: "Accessibility",
-                  subtitle: "Required to paste clips directly into your active apps.") {
-            VStack(alignment: .trailing, spacing: 8) {
-                statusBadge(text: axGranted ? "Granted" : "Required",
-                            color: axGranted ? .green : .orange)
-
-                if !axGranted {
-                    Button {
-                        NSWorkspace.shared.open(
-                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                        )
-                    } label: {
-                        Label("Grant", systemImage: "arrow.up.right.square")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .controlSize(.small)
-                }
+    private var navBar: some View {
+        HStack {
+            if step > 0 {
+                Button("Back") { step -= 1 }
             }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: axGranted)
-    }
-
-    private var launchAtLoginCard: some View {
-        SetupCard(icon: "power.circle.fill",
-                  iconColor: .accentColor,
-                  title: "Auto Launch",
-                  subtitle: "Start ClipHistory automatically when you log in.") {
-            Toggle("", isOn: $settings.launchAtLogin)
-                .toggleStyle(.switch)
-                .labelsHidden()
-        }
-    }
-
-    private var shortcutCard: some View {
-        SetupCard(icon: "command.circle.fill",
-                  iconColor: .blue,
-                  title: "Shortcut",
-                  subtitle: "The key combination to show your clipboard history.") {
-            Text(settings.hotkey.displayString)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.primary.opacity(0.8))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    // MARK: - Footer
-
-    private var footer: some View {
-        HStack(spacing: 16) {
-            Text(axGranted
-                 ? "You're all set! Enjoy your new clipboard power."
-                 : "You can finish now and grant access later in Settings.")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary.opacity(0.6))
-                .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
 
-            Button("Get Started") { onDone() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .keyboardShortcut(.return)
-                .tint(.accentColor)
-        }
-        .padding(24)
-        .padding(.bottom, 8)
-    }
-
-    private func statusBadge(text: String, color: Color) -> some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(color)
-                .frame(width: 6, height: 6)
-            Text(text)
-                .font(.system(size: 11, weight: .bold))
-        }
-        .foregroundStyle(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-// MARK: - Setup card
-
-private struct SetupCard<Accessory: View>: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-    let subtitle: String
-    @ViewBuilder let accessory: () -> Accessory
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(iconColor)
-                .frame(width: 38, height: 38)
-                .background(iconColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .bold))
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                ForEach(0..<totalSteps, id: \.self) { i in
+                    Circle()
+                        .fill(i == step ? Color.accentColor : Color.secondary.opacity(0.3))
+                        .frame(width: 7, height: 7)
+                }
             }
 
-            Spacer(minLength: 12)
+            Spacer()
 
-            accessory()
+            if step < totalSteps - 1 {
+                Button("Continue") { step += 1 }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canAdvance)
+            } else {
+                Button("Get Started") { onDone() }
+                    .keyboardShortcut(.defaultAction)
+            }
         }
-        .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.panelRadius))
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+    }
+
+    /// Step 0 is gated on the Accessibility grant — the rest of the app is dead
+    /// without it, so there's no point demoing the shortcut first.
+    private var canAdvance: Bool {
+        step == 0 ? axGranted : true
+    }
+
+    // MARK: - Step 0 · Welcome + Accessibility
+
+    private var welcomeStep: some View {
+        VStack(spacing: 14) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 72, height: 72)
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
+
+            Text("Welcome to ClipHistory")
+                .font(.largeTitle.bold())
+
+            Text("Your clipboard history, one keystroke away. There's just one thing to switch on first.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: axGranted ? "checkmark.circle.fill" : "hand.raised.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(axGranted ? .green : .orange)
+                    Text("Accessibility access").font(.headline)
+                    Spacer()
+                    if axGranted {
+                        Text("Granted").font(.subheadline.weight(.semibold)).foregroundStyle(.green)
+                    }
+                }
+                Text("ClipHistory needs this to detect your shortcut and paste clips into other apps. Click below, then switch ClipHistory on in the list.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !axGranted {
+                    Button("Open Accessibility Settings…") { requestAccessibility() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quinary, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+            .padding(.top, 6)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: axGranted)
+        }
+    }
+
+    // MARK: - Step 1 · Shortcut & Launch
+
+    private var shortcutStep: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "command")
+                .font(.system(size: 52, weight: .light))
+                .foregroundStyle(.tint)
+
+            Text("Your shortcut")
+                .font(.title.bold())
+
+            Text("Press this anywhere to open your clipboard history. Change it now if you like, or leave the default.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HotkeyRecorder(hotkey: $settings.hotkey)
+                .frame(width: 170, height: 30)
+                .padding(.top, 4)
+
+            Toggle("Launch ClipHistory at login", isOn: $settings.launchAtLogin)
+                .toggleStyle(.checkbox)
+                .padding(.top, 12)
+        }
+    }
+
+    // MARK: - Step 2 · Try it
+
+    private var tryItStep: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 52, weight: .light))
+                .foregroundStyle(.tint)
+
+            Text("Give it a go")
+                .font(.title.bold())
+
+            Text("Press your shortcut right now to open your clipboard history:")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Text(settings.hotkey.displayString)
+                .font(.system(size: 24, weight: .semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+
+            Spacer(minLength: 8)
+
+            Text("Change the shortcut, popup position and more any time in **Settings** — the gear button in the popup, or the menu bar icon.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func requestAccessibility() {
+        AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }

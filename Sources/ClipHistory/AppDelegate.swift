@@ -73,6 +73,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
 
 
+
+
+
+
+
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -184,9 +189,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let controller = NSHostingController(rootView: view)
         let win = NSWindow(contentViewController: controller)
-        win.title                = "ClipHistory Setup"
-        win.styleMask            = [.titled, .closable]
-        win.isReleasedWhenClosed = false
+        win.title                  = "Set up ClipHistory"
+        win.styleMask              = [.titled, .closable, .fullSizeContentView]
+        win.titleVisibility        = .hidden
+        win.titlebarAppearsTransparent = true
+        win.titlebarSeparatorStyle = .none
+        win.isReleasedWhenClosed   = false
         win.center()
         onboardingWindow = win
 
